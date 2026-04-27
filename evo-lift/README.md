@@ -98,3 +98,86 @@ When adding future seeds, append a new numbered file (for example `003_defaults.
 supabase db query --linked --file supabase/seeds/001_exercises.sql
 supabase db query --linked --file supabase/seeds/002_exercise_translations.sql
 ```
+
+## Backend Supabase usage
+
+Supabase server clients live in `lib/supabase/server.ts`:
+
+- `createPublicServerClient(accessToken?)` uses anon key and obeys RLS.
+- `createServiceRoleClient()` uses service role and bypasses RLS.
+
+Backend query logic lives in:
+
+- `server/db/exercises.ts`
+- `server/db/workouts.ts`
+
+Route handlers stay thin and call that data layer:
+
+- `app/api/exercises/route.ts`
+
+### Browser API testing (Swagger UI)
+
+- Open `http://localhost:3000/docs` for interactive API docs.
+- The OpenAPI spec is served from `http://localhost:3000/api/openapi`.
+- Click `Authorize` in Swagger UI and paste `Bearer <your_access_token>` for authenticated endpoints.
+
+### RLS choice guidelines
+
+- Use `createPublicServerClient` for user-scoped endpoints and pass a valid user JWT as bearer token (`Authorization: Bearer <token>`).
+- Use `createServiceRoleClient` only for trusted internal/admin operations.
+- If an endpoint should never bypass policies, do not use the service role in that path.
+
+## Environment variables
+
+Set these in each environment:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Notes:
+
+- `NEXT_PUBLIC_SUPABASE_URL` must be the project base URL (for example `https://<project-ref>.supabase.co`), not `/rest/v1`.
+- `NEXT_PUBLIC_*` values are embedded at build time, so redeploy after changing them.
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be exposed in client code.
+
+### Environment matrix
+
+| Environment | Supabase project | Where to configure |
+| --- | --- | --- |
+| Local | dev/local Supabase | `evo-lift/.env.local` |
+| Preview | preview/staging Supabase (recommended) | Vercel Project Settings -> Environment Variables (Preview) |
+| Production | production Supabase | Vercel Project Settings -> Environment Variables (Production) |
+
+## Deployment checklist
+
+1. Apply schema changes from migrations:
+   - `supabase db push --linked`
+2. Run only production-safe seeds:
+   - `supabase db query --linked --file supabase/seeds/001_exercises.sql`
+   - `supabase db query --linked --file supabase/seeds/002_exercise_translations.sql`
+3. Verify Vercel env vars are set for the target environment.
+4. Redeploy application.
+5. Smoke test:
+   - `/login`
+   - `/docs`
+   - authenticated `GET /api/exercises?lang=en`
+
+## Auth and API usage
+
+- Users authenticate via Supabase Auth (email/password, OAuth, magic link, etc.).
+- Frontend gets `access_token` from Supabase session.
+- Backend routes use `Authorization: Bearer <access_token>` for RLS-aware requests.
+- In Swagger (`/docs`), use Authorize and paste the raw token value (without adding an extra `Bearer` prefix).
+
+## Seed policy
+
+- Keep production-safe seeds under `supabase/seeds` (catalog/reference data).
+- Keep dev-only sample/test data in separate files (for example `9xx_dev_*.sql`) and do not run these in production.
+- Prefer idempotent seeds using `on conflict do nothing` or `on conflict ... do update`.
+
+## Security notes
+
+- Never commit `.env.local`.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` to browser/client code.
+- Rotate any leaked keys/passwords immediately.
