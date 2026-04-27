@@ -1,0 +1,61 @@
+-- Seed exercise catalog base rows.
+-- Must run before translation seeds.
+
+with exercise_seed(slug) as (
+values
+  ('assisted-dip'),
+  ('back-squat'),
+  ('barbell-bench-press'),
+  ('barbell-bent-over-row'),
+  ('barbell-hip-thrust'),
+  ('bent-over-reverse-dumbbell-flye'),
+  ('bicycle-crunch'),
+  ('cable-flye'),
+  ('cable-lateral-raise'),
+  ('cable-reverse-flye'),
+  ('cable-seated-row'),
+  ('cable-tricep-kickback'),
+  ('chest-supported-row'),
+  ('chest-supported-t-bar-row'),
+  ('close-grip-bench-press'),
+  ('crunch'),
+  ('deadlift'),
+  ('dumbbell-floor-press'),
+  ('dumbbell-incline-press'),
+  ('dumbbell-lateral-raise'),
+  ('dumbbell-row'),
+  ('dumbbell-seated-shoulder-press'),
+  ('dumbbell-single-leg-hip-thrust'),
+  ('dumbbell-skull-crusher'),
+  ('dumbbell-supinated-curl'),
+  ('dumbbell-walking-lunge'),
+  ('ez-bar-curl'),
+  ('goblet-squat'),
+  ('hammer-curl'),
+  ('hanging-leg-raise'),
+  ('lat-pulldown'),
+  ('lying-leg-curl'),
+  ('seated-leg-curl'),
+  ('leg-extension'),
+  ('leg-press'),
+  ('machine-incline-chest-press'),
+  ('machine-seated-hip-abduction'),
+  ('neutral-grip-pulldown'),
+  ('overhead-press'),
+  ('pec-deck'),
+  ('plank'),
+  ('reverse-grip-lat-pulldown'),
+  ('reverse-pec-deck'),
+  ('romanian-deadlift'),
+  ('seated-face-pull'),
+  ('single-arm-cable-curl'),
+  ('single-arm-pulldown'),
+  ('single-arm-rope-tricep-extension'),
+  ('single-leg-leg-extension'),
+  ('single-leg-lying-leg-curl'),
+  ('standing-calf-raise')
+)
+insert into public.exercises (slug)
+select slug
+from exercise_seed
+on conflict (slug) do nothing;
