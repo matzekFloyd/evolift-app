@@ -89,3 +89,12 @@ sql_paths = ["./seeds/*.sql"]
 ```
 
 When adding future seeds, append a new numbered file (for example `003_defaults.sql`).
+
+### Run seeds on linked remote
+
+`supabase db push` applies migrations only. To run seed files on the linked remote database, execute:
+
+```bash
+supabase db query --linked --file supabase/seeds/001_exercises.sql
+supabase db query --linked --file supabase/seeds/002_exercise_translations.sql
+```
