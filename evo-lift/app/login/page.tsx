@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const isSignedIn = Boolean(accessToken);
 
   useEffect(() => {
     let isMounted = true;
@@ -85,6 +87,20 @@ export default function LoginPage() {
     setIsLoading(false);
   }
 
+  async function handleCopyToken() {
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(accessToken);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setMessage("Could not copy token. Please copy it manually.");
+    }
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-6 py-14">
       <div className="space-y-2">
@@ -102,7 +118,8 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            readOnly={isSignedIn}
+            className="mt-1 w-full rounded-md border px-3 py-2 text-sm read-only:bg-zinc-100 read-only:text-zinc-600"
             placeholder="you@example.com"
           />
         </label>
@@ -114,7 +131,8 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            readOnly={isSignedIn}
+            className="mt-1 w-full rounded-md border px-3 py-2 text-sm read-only:bg-zinc-100 read-only:text-zinc-600"
             placeholder="Your password"
           />
         </label>
@@ -122,7 +140,7 @@ export default function LoginPage() {
         <div className="flex gap-2">
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isSignedIn}
             className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-60"
           >
             {isLoading ? "Please wait..." : "Sign in"}
@@ -143,12 +161,39 @@ export default function LoginPage() {
         <p>
           <span className="font-medium">User:</span> {userEmail ?? "not logged in"}
         </p>
-        <p className="break-all">
-          <span className="font-medium">Access token:</span>{" "}
-          {accessToken ? `${accessToken.slice(0, 28)}...` : "none"}
-        </p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">Access token</span>
+            <button
+              type="button"
+              disabled={!accessToken}
+              onClick={handleCopyToken}
+              className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
+              aria-label="Copy access token"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="h-3.5 w-3.5"
+                aria-hidden="true"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <textarea
+            readOnly
+            value={accessToken ?? "none"}
+            className="h-32 w-full rounded-md border bg-white px-2 py-1 font-mono text-xs"
+          />
+        </div>
         <p className="text-zinc-600">
-          Use this token in Swagger (`/docs`) Authorize modal.
+          `/docs` should auto-use your current token. You can still copy it manually.
         </p>
       </section>
 

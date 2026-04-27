@@ -27,12 +27,66 @@ const html = `<!doctype html>
     <div id="swagger-ui"></div>
     <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
     <script>
+      function getSupabaseAccessToken() {
+        try {
+          const storageKeys = Object.keys(window.localStorage);
+          const authKey = storageKeys.find(
+            (key) => key.startsWith("sb-") && key.endsWith("-auth-token")
+          );
+          if (!authKey) {
+            return null;
+          }
+
+          const raw = window.localStorage.getItem(authKey);
+          if (!raw) {
+            return null;
+          }
+
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object") {
+            if (typeof parsed.access_token === "string") {
+              return parsed.access_token;
+            }
+            if (
+              parsed.currentSession &&
+              typeof parsed.currentSession.access_token === "string"
+            ) {
+              return parsed.currentSession.access_token;
+            }
+          }
+        } catch (_err) {
+          return null;
+        }
+
+        return null;
+      }
+
+      function attachToken(ui) {
+        const token = getSupabaseAccessToken();
+        if (!token) {
+          return;
+        }
+        ui.preauthorizeApiKey("bearerAuth", token);
+      }
+
       window.ui = SwaggerUIBundle({
         url: "/api/openapi",
         dom_id: "#swagger-ui",
         deepLinking: true,
         displayRequestDuration: true,
-        persistAuthorization: true
+        persistAuthorization: true,
+        requestInterceptor: function (request) {
+          const token = getSupabaseAccessToken();
+          if (token) {
+            request.headers.Authorization = "Bearer " + token;
+          }
+          return request;
+        }
+      });
+
+      attachToken(window.ui);
+      window.addEventListener("storage", function () {
+        attachToken(window.ui);
       });
     </script>
   </body>
