@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
+import { toExerciseBadge } from "@/lib/exercise-badge";
 
 function getTodayDateString(): string {
   const now = new Date();
@@ -62,7 +63,7 @@ export default function NewSessionPage() {
   const [notes, setNotes] = useState("");
   const [isSessionNotesExpanded, setIsSessionNotesExpanded] = useState(false);
   const [exerciseOptions, setExerciseOptions] = useState<
-    Array<{ id: string; label: string }>
+    Array<{ id: string; label: string; slug: string }>
   >([]);
   const [exerciseRows, setExerciseRows] = useState<ExerciseDraftRow[]>([
     emptyExerciseRow,
@@ -150,6 +151,7 @@ export default function NewSessionPage() {
       const options = (exercises ?? []).map((exercise) => ({
         id: exercise.id,
         label: translationMap.get(exercise.id) ?? exercise.slug,
+        slug: exercise.slug,
       }));
 
       const { data: defaultsData, error: defaultsError } = await supabaseBrowserClient
@@ -707,7 +709,7 @@ export default function NewSessionPage() {
                     <option value="">Select exercise</option>
                     {exerciseOptions.map((option) => (
                       <option key={option.id} value={option.id}>
-                        {option.label}
+                        {option.label} ({toExerciseBadge(option.slug)})
                       </option>
                     ))}
                   </select>

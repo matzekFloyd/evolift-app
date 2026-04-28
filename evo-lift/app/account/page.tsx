@@ -5,13 +5,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
+import { toExerciseBadge } from "@/lib/exercise-badge";
 
 export default function AccountPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [exerciseOptions, setExerciseOptions] = useState<Array<{ id: string; label: string }>>([]);
+  const [exerciseOptions, setExerciseOptions] = useState<Array<{ id: string; label: string; slug: string }>>([]);
   const [defaultsByExerciseId, setDefaultsByExerciseId] = useState<
     Map<string, Database["public"]["Tables"]["user_exercise_defaults"]["Row"]>
   >(new Map());
@@ -71,6 +72,7 @@ export default function AccountPage() {
       const options = (exercises ?? []).map((exercise) => ({
         id: exercise.id,
         label: translationMap.get(exercise.id) ?? exercise.slug,
+        slug: exercise.slug,
       }));
       setExerciseOptions(options);
 
@@ -445,7 +447,7 @@ export default function AccountPage() {
               <option value="">Select exercise</option>
               {exerciseOptions.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label}
+                  {option.label} ({toExerciseBadge(option.slug)})
                 </option>
               ))}
             </select>

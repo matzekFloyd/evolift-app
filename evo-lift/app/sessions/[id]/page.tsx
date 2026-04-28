@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
+import { toExerciseBadge } from "@/lib/exercise-badge";
 
 type SessionRow = Database["public"]["Tables"]["workout_sessions"]["Row"];
 type SessionExerciseRow = Database["public"]["Tables"]["workout_session_exercises"]["Row"];
@@ -60,7 +61,7 @@ export default function SessionDetailPage() {
   const [isDeleteSessionConfirmOpen, setIsDeleteSessionConfirmOpen] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [hasHydratedReadOnly, setHasHydratedReadOnly] = useState(false);
-  const [exerciseOptions, setExerciseOptions] = useState<Array<{ id: string; label: string }>>([]);
+  const [exerciseOptions, setExerciseOptions] = useState<Array<{ id: string; label: string; slug: string }>>([]);
   const [addExerciseDraft, setAddExerciseDraft] =
     useState<AddExerciseDraft>(emptyAddExerciseDraft);
   const [isAddingExercise, setIsAddingExercise] = useState(false);
@@ -182,6 +183,7 @@ export default function SessionDetailPage() {
         (allExercises ?? []).map((item) => ({
           id: item.id,
           label: translated.get(item.id) ?? item.slug,
+          slug: item.slug,
         })),
       );
       setIsChecking(false);
@@ -995,7 +997,7 @@ export default function SessionDetailPage() {
                       <option value="">Select exercise</option>
                       {exerciseOptions.map((option) => (
                         <option key={option.id} value={option.id}>
-                          {option.label}
+                          {option.label} ({toExerciseBadge(option.slug)})
                         </option>
                       ))}
                     </select>

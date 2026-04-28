@@ -5,12 +5,29 @@ import { ClipboardList, FilterX, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { toExerciseBadge } from "@/lib/exercise-badge";
 
 type WorkoutSessionRow = {
   id: string;
   performed_on: string;
   notes: string | null;
   created_at: string;
+};
+
+type SessionExerciseRow = {
+  id: string;
+  session_id: string;
+  exercise_id: string;
+};
+
+type ExerciseRow = {
+  id: string;
+  slug: string;
+};
+
+type SessionExerciseBadge = {
+  slug: string;
+  hasLoggedSet: boolean;
 };
 
 type SortKey = "number" | "performed_on" | "notes";
@@ -33,6 +50,11 @@ function getDefaultDateRange(): { from: string; to: string } {
   };
 }
 
+function normalizeDateOnly(value: string): string {
+  // Supabase may return date-only or datetime strings; normalize to YYYY-MM-DD.
+  return value.slice(0, 10);
+}
+
 export default function Home() {
   const router = useRouter();
   const defaultDateRange = useMemo(() => getDefaultDateRange(), []);
@@ -46,6 +68,10 @@ export default function Home() {
   const [sortKey, setSortKey] = useState<SortKey>("performed_on");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [expandedNotesIds, setExpandedNotesIds] = useState<Set<string>>(new Set());
+  const [openingSessionId, setOpeningSessionId] = useState<string | null>(null);
+  const [exerciseBadgesBySessionId, setExerciseBadgesBySessionId] = useState<
+    Map<string, SessionExerciseBadge[]>
+  >(new Map());
 
   useEffect(() => {
     let isMounted = true;
@@ -78,7 +104,82 @@ export default function Home() {
         return;
       }
 
-      setSessions((data ?? []) as WorkoutSessionRow[]);
+      const loadedSessions = (data ?? []) as WorkoutSessionRow[];
+      setSessions(loadedSessions);
+
+      const sessionIds = loadedSessions.map((row) => row.id);
+      if (sessionIds.length > 0) {
+        const { data: sessionExercisesData, error: sessionExercisesError } = await supabaseBrowserClient
+          .from("workout_session_exercises")
+          .select("id, session_id, exercise_id")
+          .in("session_id", sessionIds);
+
+        if (sessionExercisesError) {
+          setSessionsError("Could not load session exercises.");
+          setIsChecking(false);
+          return;
+        }
+
+        const typedSessionExercises = (sessionExercisesData ?? []) as SessionExerciseRow[];
+        const uniqueExerciseIds = [...new Set(typedSessionExercises.map((item) => item.exercise_id))];
+        const sessionExerciseIds = typedSessionExercises.map((item) => item.id);
+        const sessionExerciseIdsWithSets = new Set<string>();
+
+        if (sessionExerciseIds.length > 0) {
+          const { data: setsData, error: setsError } = await supabaseBrowserClient
+            .from("workout_sets")
+            .select("session_exercise_id")
+            .in("session_exercise_id", sessionExerciseIds);
+
+          if (setsError) {
+            setSessionsError("Could not load workout sets.");
+            setIsChecking(false);
+            return;
+          }
+
+          for (const row of setsData ?? []) {
+            if (row.session_exercise_id) {
+              sessionExerciseIdsWithSets.add(row.session_exercise_id);
+            }
+          }
+        }
+
+        const slugByExerciseId = new Map<string, string>();
+        if (uniqueExerciseIds.length > 0) {
+          const { data: exercisesData, error: exercisesError } = await supabaseBrowserClient
+            .from("exercises")
+            .select("id, slug")
+            .in("id", uniqueExerciseIds);
+
+          if (exercisesError) {
+            setSessionsError("Could not load exercises.");
+            setIsChecking(false);
+            return;
+          }
+
+          for (const exercise of (exercisesData ?? []) as ExerciseRow[]) {
+            slugByExerciseId.set(exercise.id, exercise.slug);
+          }
+        }
+
+        const nextMap = new Map<string, SessionExerciseBadge[]>();
+        for (const item of typedSessionExercises) {
+          const slug = slugByExerciseId.get(item.exercise_id);
+          if (!slug) {
+            continue;
+          }
+          const current = nextMap.get(item.session_id) ?? [];
+          current.push({
+            slug,
+            hasLoggedSet: sessionExerciseIdsWithSets.has(item.id),
+          });
+          nextMap.set(item.session_id, current);
+        }
+        setExerciseBadgesBySessionId(nextMap);
+      } else {
+        setExerciseBadgesBySessionId(new Map());
+      }
+
       setIsChecking(false);
     }
 
@@ -123,10 +224,11 @@ export default function Home() {
 
   const filteredSessions = useMemo(() => {
     return sessions.filter((session) => {
-      if (dateFrom && session.performed_on < dateFrom) {
+      const performedOn = normalizeDateOnly(session.performed_on);
+      if (dateFrom && performedOn < dateFrom) {
         return false;
       }
-      if (dateTo && session.performed_on > dateTo) {
+      if (dateTo && performedOn > dateTo) {
         return false;
       }
       return true;
@@ -271,6 +373,7 @@ export default function Home() {
                       Performed on {renderSortIndicator("performed_on")}
                     </button>
                   </th>
+                  <th className="px-2 py-2 font-medium">Exercises</th>
                   <th className="hidden px-2 py-2 font-medium md:table-cell">
                     <button
                       type="button"
@@ -296,15 +399,56 @@ export default function Home() {
                     const needsTruncate = notes.length > 64;
                     const visibleNotes =
                       needsTruncate && !isExpanded ? `${notes.slice(0, 64)}[...]` : notes || "-";
+                    const isOpening = openingSessionId === session.id;
 
                     return (
                     <tr
                       key={session.id}
-                      className="cursor-pointer border-b last:border-b-0 hover:bg-amber-50"
-                      onClick={() => router.push(`/sessions/${session.id}`)}
+                      className={`border-b last:border-b-0 ${
+                        isOpening
+                          ? "cursor-progress bg-amber-100"
+                          : "cursor-pointer hover:bg-amber-50"
+                      }`}
+                      onClick={() => {
+                        if (openingSessionId) {
+                          return;
+                        }
+                        setOpeningSessionId(session.id);
+                        router.push(`/sessions/${session.id}`);
+                      }}
                     >
                       <td className="px-2 py-2">{sessionNumberById.get(session.id) ?? "-"}</td>
-                      <td className="px-2 py-2">{session.performed_on}</td>
+                      <td className="px-2 py-2">
+                        <span className="inline-flex items-center gap-2">
+                          {session.performed_on}
+                          {isOpening ? (
+                            <span className="text-xs font-medium text-amber-700">Opening...</span>
+                          ) : null}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="flex flex-wrap items-center gap-1">
+                          {(exerciseBadgesBySessionId.get(session.id) ?? []).slice(0, 8).map((item, index) => {
+                            return (
+                              <span
+                                key={`${session.id}-${item.slug}-${index}`}
+                                className={`inline-flex h-6 min-w-8 items-center justify-center rounded border px-1 text-[10px] font-semibold tracking-wide ${
+                                  item.hasLoggedSet
+                                    ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                                    : "border-zinc-300 bg-zinc-50 text-zinc-700"
+                                }`}
+                                title={`${item.slug}${item.hasLoggedSet ? " (set logged)" : " (no sets yet)"}`}
+                                aria-label={item.slug}
+                              >
+                                {toExerciseBadge(item.slug)}
+                              </span>
+                            );
+                          })}
+                          {(exerciseBadgesBySessionId.get(session.id) ?? []).length === 0 ? (
+                            <span className="text-zinc-500">-</span>
+                          ) : null}
+                        </div>
+                      </td>
                       <td className="hidden px-2 py-2 md:table-cell">
                         <span>{visibleNotes}</span>
                         {needsTruncate ? (
