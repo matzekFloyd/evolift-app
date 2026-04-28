@@ -80,6 +80,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      workout_session_exercises: {
+        Row: {
+          id: string;
+          session_id: string;
+          exercise_id: string;
+          position: number;
+          base_weight_kg: number | null;
+          target_sets: number | null;
+          target_reps: number | null;
+          target_weight_kg: number | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          exercise_id: string;
+          position: number;
+          base_weight_kg?: number | null;
+          target_sets?: number | null;
+          target_reps?: number | null;
+          target_weight_kg?: number | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          exercise_id?: string;
+          position?: number;
+          base_weight_kg?: number | null;
+          target_sets?: number | null;
+          target_reps?: number | null;
+          target_weight_kg?: number | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       workout_sets: {
         Row: {
           id: string;

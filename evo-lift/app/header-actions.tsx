@@ -84,7 +84,7 @@ export function HeaderActions() {
             href="/"
           >
             <House className="h-3.5 w-3.5" />
-            App
+            Home
           </Link>
           <Link
             className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium sm:text-sm ${

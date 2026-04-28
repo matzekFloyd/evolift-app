@@ -177,7 +177,13 @@ export default function Home() {
                 {sortedSessions.length === 0 ? (
                   <tr>
                     <td className="break-words whitespace-normal px-2 py-4 text-zinc-600" colSpan={2}>
-                      No workout sessions are stored yet.
+                      No workout sessions are stored yet.{" "}
+                      <a
+                        href="/sessions/new"
+                        className="font-medium underline"
+                      >
+                        Start tracking
+                      </a>
                     </td>
                   </tr>
                 ) : (
