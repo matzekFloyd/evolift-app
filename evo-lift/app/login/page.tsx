@@ -2,12 +2,11 @@
 
 import { CircleCheck, Dumbbell, Lock, Mail } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,7 +14,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const isVerifiedNotice = searchParams.get("verified") === "1";
+  const [isVerifiedNotice, setIsVerifiedNotice] = useState(false);
 
   function getFriendlyAuthError(rawMessage: string): string {
     const messageLower = rawMessage.toLowerCase();
@@ -59,6 +58,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     let isMounted = true;
+
+    const params = new URLSearchParams(window.location.search);
+    setIsVerifiedNotice(params.get("verified") === "1");
 
     async function loadSession() {
       const {
