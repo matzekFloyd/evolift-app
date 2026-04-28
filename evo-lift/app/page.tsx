@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, FilterX, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -16,11 +16,33 @@ type WorkoutSessionRow = {
 type SortKey = "number" | "performed_on" | "notes";
 type SortDirection = "asc" | "desc";
 
+function formatDateToYyyyMmDd(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getDefaultDateRange(): { from: string; to: string } {
+  const today = new Date();
+  const oneYearAgo = new Date(today);
+  oneYearAgo.setFullYear(today.getFullYear() - 1);
+  return {
+    from: formatDateToYyyyMmDd(oneYearAgo),
+    to: formatDateToYyyyMmDd(today),
+  };
+}
+
 export default function Home() {
   const router = useRouter();
+  const defaultDateRange = useMemo(() => getDefaultDateRange(), []);
+  const pageSize = 20;
   const [isChecking, setIsChecking] = useState(true);
   const [sessions, setSessions] = useState<WorkoutSessionRow[]>([]);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState(defaultDateRange.from);
+  const [dateTo, setDateTo] = useState(defaultDateRange.to);
+  const [currentPage, setCurrentPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>("performed_on");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [expandedNotesIds, setExpandedNotesIds] = useState<Set<string>>(new Set());
@@ -99,8 +121,20 @@ export default function Home() {
     return numberMap;
   }, [sessions]);
 
+  const filteredSessions = useMemo(() => {
+    return sessions.filter((session) => {
+      if (dateFrom && session.performed_on < dateFrom) {
+        return false;
+      }
+      if (dateTo && session.performed_on > dateTo) {
+        return false;
+      }
+      return true;
+    });
+  }, [dateFrom, dateTo, sessions]);
+
   const sortedSessions = useMemo(() => {
-    const sorted = [...sessions];
+    const sorted = [...filteredSessions];
     sorted.sort((a, b) => {
       let left: number | string = "";
       let right: number | string = "";
@@ -125,7 +159,24 @@ export default function Home() {
       return 0;
     });
     return sorted;
-  }, [sessionNumberById, sessions, sortDirection, sortKey]);
+  }, [filteredSessions, sessionNumberById, sortDirection, sortKey]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedSessions.length / pageSize));
+
+  const paginatedSessions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedSessions.slice(start, start + pageSize);
+  }, [currentPage, pageSize, sortedSessions]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFrom, dateTo, sortDirection, sortKey]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   function renderSortIndicator(column: SortKey) {
     if (sortKey !== column) {
@@ -163,6 +214,41 @@ export default function Home() {
         {sessionsError ? (
           <p className="text-sm text-red-600">{sessionsError}</p>
         ) : (
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="block text-xs font-medium text-zinc-600">
+                  From
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(event) => setDateFrom(event.target.value)}
+                    className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  To
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(event) => setDateTo(event.target.value)}
+                    className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+                disabled={!dateFrom && !dateTo}
+                className="inline-flex h-9 items-center justify-center gap-1 rounded-md border px-3 text-sm disabled:opacity-60"
+              >
+                <FilterX className="h-3.5 w-3.5" />
+                Clear filters
+              </button>
+            </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-full text-left text-sm md:min-w-[520px]">
               <thead>
@@ -204,7 +290,7 @@ export default function Home() {
                     </td>
                   </tr>
                 ) : (
-                  sortedSessions.map((session) => {
+                  paginatedSessions.map((session) => {
                     const notes = session.notes ?? "";
                     const isExpanded = expandedNotesIds.has(session.id);
                     const needsTruncate = notes.length > 64;
@@ -240,6 +326,32 @@ export default function Home() {
                 )}
               </tbody>
             </table>
+          </div>
+          {sortedSessions.length > 0 ? (
+            <div className="flex items-center justify-between pt-3 text-sm">
+              <p className="text-zinc-600">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="inline-flex h-9 items-center justify-center rounded-md border px-3 disabled:opacity-60"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="inline-flex h-9 items-center justify-center rounded-md border px-3 disabled:opacity-60"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ) : null}
           </div>
         )}
       </section>

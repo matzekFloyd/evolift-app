@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Dumbbell, Lock, LockOpen, Plus } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Dumbbell, Lock, LockOpen, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -14,7 +14,6 @@ type SetDraft = {
   reps: string;
   weightKg: string;
   isWarmup: boolean;
-  notes: string;
 };
 
 type AddExerciseDraft = {
@@ -30,7 +29,6 @@ const emptyDraft: SetDraft = {
   reps: "",
   weightKg: "",
   isWarmup: false,
-  notes: "",
 };
 
 const emptyAddExerciseDraft: AddExerciseDraft = {
@@ -52,18 +50,21 @@ export default function SessionDetailPage() {
   const [session, setSession] = useState<SessionRow | null>(null);
   const [sessionExercises, setSessionExercises] = useState<SessionExerciseRow[]>([]);
   const [workoutSets, setWorkoutSets] = useState<WorkoutSetRow[]>([]);
+  const [sessionNumber, setSessionNumber] = useState<number | null>(null);
   const [exerciseLabels, setExerciseLabels] = useState<Map<string, string>>(new Map());
   const [addDrafts, setAddDrafts] = useState<Record<string, SetDraft>>({});
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<SetDraft>(emptyDraft);
   const [isSavingSet, setIsSavingSet] = useState(false);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const [isDeleteSessionConfirmOpen, setIsDeleteSessionConfirmOpen] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [hasHydratedReadOnly, setHasHydratedReadOnly] = useState(false);
   const [exerciseOptions, setExerciseOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [addExerciseDraft, setAddExerciseDraft] =
     useState<AddExerciseDraft>(emptyAddExerciseDraft);
   const [isAddingExercise, setIsAddingExercise] = useState(false);
+  const [isAddExerciseExpanded, setIsAddExerciseExpanded] = useState(false);
 
   function getReadOnlyStorageKey(currentSessionId: string) {
     return `evolift:session-readonly:${currentSessionId}`;
@@ -99,6 +100,14 @@ export default function SessionDetailPage() {
         setIsChecking(false);
         return;
       }
+
+      const { data: allUserSessions } = await supabaseBrowserClient
+        .from("workout_sessions")
+        .select("id")
+        .eq("user_id", authSession.user.id)
+        .order("created_at", { ascending: true });
+      const computedSessionNumber =
+        (allUserSessions ?? []).findIndex((row) => row.id === sessionData.id) + 1;
 
       const { data: sessionExerciseData, error: sessionExerciseError } =
         await supabaseBrowserClient
@@ -165,6 +174,7 @@ export default function SessionDetailPage() {
       }
 
       setSession(sessionData);
+      setSessionNumber(computedSessionNumber > 0 ? computedSessionNumber : null);
       setSessionExercises(sessionExerciseData ?? []);
       setWorkoutSets(sets);
       setExerciseLabels(labels);
@@ -268,7 +278,6 @@ export default function SessionDetailPage() {
         reps: parsedReps,
         weight_kg: parsedWeight,
         is_warmup: draft.isWarmup,
-        notes: draft.notes.trim() ? draft.notes.trim() : null,
       })
       .select("*")
       .single();
@@ -290,7 +299,6 @@ export default function SessionDetailPage() {
       reps: String(set.reps),
       weightKg: set.weight_kg == null ? "" : String(set.weight_kg),
       isWarmup: set.is_warmup,
-      notes: set.notes ?? "",
     });
   }
 
@@ -315,7 +323,6 @@ export default function SessionDetailPage() {
         reps: parsedReps,
         weight_kg: parsedWeight,
         is_warmup: editDraft.isWarmup,
-        notes: editDraft.notes.trim() ? editDraft.notes.trim() : null,
       })
       .eq("id", setId)
       .select("*")
@@ -352,14 +359,7 @@ export default function SessionDetailPage() {
     if (!sessionId) {
       return;
     }
-
-    const confirmed = window.confirm(
-      "Delete this workout session and all logged sets? This cannot be undone.",
-    );
-    if (!confirmed) {
-      return;
-    }
-
+    setIsDeleteSessionConfirmOpen(false);
     setIsDeletingSession(true);
     setMessage(null);
 
@@ -502,25 +502,55 @@ export default function SessionDetailPage() {
     );
   }
 
+  const formattedPerformedOn = new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(`${session.performed_on}T00:00:00`));
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
-            <Dumbbell className="h-6 w-6 text-amber-700" />
-            Workout session detail
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <Dumbbell className="h-6 w-6 text-amber-700" />
+          Workout session #{sessionNumber ?? "-"} from {formattedPerformedOn}
+        </h1>
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {!isReadOnly ? (
-            <button
-              type="button"
-              onClick={deleteSession}
-              disabled={isDeletingSession || isSavingSet}
-              className="inline-flex w-fit items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:border-red-400 hover:bg-red-50 disabled:opacity-60"
-            >
-              {isDeletingSession ? "Deleting..." : "Delete session"}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setIsDeleteSessionConfirmOpen(true)}
+                disabled={isDeletingSession || isSavingSet}
+                className="inline-flex w-fit items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:border-red-400 hover:bg-red-50 disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeletingSession ? "Deleting..." : "Delete"}
+              </button>
+              {isDeleteSessionConfirmOpen ? (
+                <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1">
+                  <span className="text-xs text-red-800">
+                    Delete session #{sessionNumber ?? "?"}?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={deleteSession}
+                    disabled={isDeletingSession}
+                    className="rounded-md border border-red-300 px-2 py-1 text-xs text-red-800 hover:border-red-500 hover:bg-red-100 disabled:opacity-60"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteSessionConfirmOpen(false)}
+                    disabled={isDeletingSession}
+                    className="rounded-md border px-2 py-1 text-xs hover:bg-white disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : null}
+            </>
           ) : null}
           <button
             type="button"
@@ -541,19 +571,19 @@ export default function SessionDetailPage() {
         </div>
       </div>
       <section className="panel p-5 text-sm">
-        <p>
-          <span className="font-medium">Performed on:</span> {session.performed_on}
-        </p>
-        <p className="mt-1">
-          <span className="font-medium">Notes:</span> {session.notes ?? "-"}
-        </p>
-      </section>
-      {sessionExercises.length === 0 ? (
-        <section className="panel p-5 text-sm text-zinc-600">
-          No exercises were added to this session.
-        </section>
-      ) : (
-        sessionExercises.map((sessionExercise) => {
+        {session.notes?.trim() ? (
+          <p>
+            <span className="font-medium">Notes:</span> {session.notes}
+          </p>
+        ) : null}
+
+        {sessionExercises.length === 0 ? (
+          <section className="panel-nested panel-nested-odd mt-4 p-4 text-sm text-zinc-600">
+            No exercises were added to this session.
+          </section>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {sessionExercises.map((sessionExercise, index) => {
           const sets = getSetsForExercise(sessionExercise.id);
           const addDraft = addDrafts[sessionExercise.id] ?? emptyDraft;
           const exerciseLabel =
@@ -563,7 +593,9 @@ export default function SessionDetailPage() {
             <section
               key={sessionExercise.id}
               id={`exercise-${sessionExercise.id}`}
-              className="panel p-5 text-sm"
+              className={`panel panel-nested p-5 text-sm ${
+                index % 2 === 0 ? "panel-nested-odd" : "panel-nested-even"
+              }`}
             >
               <button
                 type="button"
@@ -589,15 +621,175 @@ export default function SessionDetailPage() {
                   .join(" | ") || "-"}
               </p>
 
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full min-w-[680px] text-left text-sm">
+              <div className="mt-3 space-y-3 md:hidden">
+                {sets.map((set) =>
+                  editingSetId === set.id ? (
+                    <div key={set.id} className="rounded-md border border-zinc-300 bg-white p-3">
+                      <p className="text-xs font-medium text-zinc-600">Set {set.set_number}</p>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <label className="text-xs font-medium text-zinc-600">
+                          Reps
+                          <input
+                            type="number"
+                            min={1}
+                            value={editDraft.reps}
+                            onChange={(event) =>
+                              setEditDraft((prev) => ({ ...prev, reps: event.target.value }))
+                            }
+                            className="mt-1 w-full rounded-md border bg-white px-2 py-1"
+                          />
+                        </label>
+                        <label className="text-xs font-medium text-zinc-600">
+                          Loaded (kg)
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.5"
+                            value={editDraft.weightKg}
+                            onChange={(event) =>
+                              setEditDraft((prev) => ({ ...prev, weightKg: event.target.value }))
+                            }
+                            className="mt-1 w-full rounded-md border bg-white px-2 py-1"
+                          />
+                        </label>
+                      </div>
+                      <label className="mt-2 inline-flex items-center gap-2 text-xs text-zinc-700">
+                        <input
+                          type="checkbox"
+                          checked={editDraft.isWarmup}
+                          onChange={(event) =>
+                            setEditDraft((prev) => ({ ...prev, isWarmup: event.target.checked }))
+                          }
+                        />
+                        Warmup
+                      </label>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => saveEdit(set.id)}
+                          disabled={isSavingSet}
+                          className="rounded-md border px-2 py-1 text-xs"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingSetId(null);
+                            setEditDraft(emptyDraft);
+                          }}
+                          disabled={isSavingSet}
+                          className="rounded-md border px-2 py-1 text-xs"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={set.id} className="rounded-md border border-zinc-300 bg-white p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium">Set {set.set_number}</p>
+                        <p className="text-xs text-zinc-600">{set.is_warmup ? "Warmup" : "Working"}</p>
+                      </div>
+                      <p className="mt-1 text-sm">
+                        <span className="font-medium">Reps:</span> {set.reps}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Loaded:</span> {set.weight_kg ?? "-"} kg
+                      </p>
+                      <p className="text-xs text-zinc-600">
+                        Total: {((set.weight_kg ?? 0) + (sessionExercise.base_weight_kg ?? 0)).toFixed(1)} kg
+                      </p>
+                      {!isReadOnly ? (
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(set)}
+                            disabled={isSavingSet}
+                            className="rounded-md border px-2 py-1 text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteSet(set.id)}
+                            disabled={isSavingSet}
+                            className="rounded-md border px-2 py-1 text-xs"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ),
+                )}
+                {!isReadOnly ? (
+                  <div className="rounded-md border border-zinc-300 bg-white p-3">
+                    <p className="inline-flex items-center gap-1 text-xs text-zinc-600">
+                      <Plus className="h-3 w-3" />
+                      New set
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <label className="text-xs font-medium text-zinc-600">
+                        Reps
+                        <input
+                          type="number"
+                          min={1}
+                          value={addDraft.reps}
+                          onChange={(event) =>
+                            updateAddDraft(sessionExercise.id, "reps", event.target.value)
+                          }
+                          className="mt-1 w-full rounded-md border bg-white px-2 py-1"
+                          placeholder="Reps"
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-zinc-600">
+                        Loaded (kg)
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.5"
+                          value={addDraft.weightKg}
+                          onChange={(event) =>
+                            updateAddDraft(sessionExercise.id, "weightKg", event.target.value)
+                          }
+                          className="mt-1 w-full rounded-md border bg-white px-2 py-1"
+                          placeholder="Weight"
+                        />
+                      </label>
+                    </div>
+                    <label className="mt-2 inline-flex items-center gap-2 text-xs text-zinc-700">
+                      <input
+                        type="checkbox"
+                        checked={addDraft.isWarmup}
+                        onChange={(event) =>
+                          updateAddDraft(sessionExercise.id, "isWarmup", event.target.checked)
+                        }
+                      />
+                      Warmup
+                    </label>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleAddSet(sessionExercise.id)}
+                        disabled={isSavingSet}
+                        className="rounded-md border px-2 py-1 text-xs"
+                      >
+                        Add set
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-3 hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[640px] text-left text-sm">
                   <thead>
                     <tr className="border-b">
                       <th className="px-2 py-2">Set</th>
                       <th className="px-2 py-2">Reps</th>
                       <th className="px-2 py-2">Loaded (kg)</th>
                       <th className="px-2 py-2">Warmup</th>
-                      <th className="px-2 py-2">Notes</th>
                       {!isReadOnly ? <th className="px-2 py-2">Actions</th> : null}
                     </tr>
                   </thead>
@@ -614,7 +806,7 @@ export default function SessionDetailPage() {
                               onChange={(event) =>
                                 setEditDraft((prev) => ({ ...prev, reps: event.target.value }))
                               }
-                              className="w-20 rounded-md border px-2 py-1"
+                              className="w-20 rounded-md border bg-white px-2 py-1"
                             />
                           </td>
                           <td className="px-2 py-2">
@@ -624,12 +816,9 @@ export default function SessionDetailPage() {
                               step="0.5"
                               value={editDraft.weightKg}
                               onChange={(event) =>
-                                setEditDraft((prev) => ({
-                                  ...prev,
-                                  weightKg: event.target.value,
-                                }))
+                                setEditDraft((prev) => ({ ...prev, weightKg: event.target.value }))
                               }
-                              className="w-24 rounded-md border px-2 py-1"
+                              className="w-24 rounded-md border bg-white px-2 py-1"
                             />
                           </td>
                           <td className="px-2 py-2">
@@ -637,21 +826,8 @@ export default function SessionDetailPage() {
                               type="checkbox"
                               checked={editDraft.isWarmup}
                               onChange={(event) =>
-                                setEditDraft((prev) => ({
-                                  ...prev,
-                                  isWarmup: event.target.checked,
-                                }))
+                                setEditDraft((prev) => ({ ...prev, isWarmup: event.target.checked }))
                               }
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <input
-                              type="text"
-                              value={editDraft.notes}
-                              onChange={(event) =>
-                                setEditDraft((prev) => ({ ...prev, notes: event.target.value }))
-                              }
-                              className="w-full min-w-[180px] rounded-md border px-2 py-1"
                             />
                           </td>
                           {!isReadOnly ? (
@@ -687,15 +863,10 @@ export default function SessionDetailPage() {
                           <td className="px-2 py-2">
                             <div>{set.weight_kg ?? "-"}</div>
                             <div className="text-xs text-zinc-500">
-                              Total:{" "}
-                              {((set.weight_kg ?? 0) + (sessionExercise.base_weight_kg ?? 0)).toFixed(
-                                1,
-                              )}{" "}
-                              kg
+                              Total: {((set.weight_kg ?? 0) + (sessionExercise.base_weight_kg ?? 0)).toFixed(1)} kg
                             </div>
                           </td>
                           <td className="px-2 py-2">{set.is_warmup ? "Yes" : "No"}</td>
-                          <td className="px-2 py-2">{set.notes ?? "-"}</td>
                           {!isReadOnly ? (
                             <td className="px-2 py-2">
                               <div className="flex gap-2">
@@ -737,7 +908,7 @@ export default function SessionDetailPage() {
                             onChange={(event) =>
                               updateAddDraft(sessionExercise.id, "reps", event.target.value)
                             }
-                            className="w-20 rounded-md border px-2 py-1"
+                            className="w-20 rounded-md border bg-white px-2 py-1"
                             placeholder="Reps"
                           />
                         </td>
@@ -750,7 +921,7 @@ export default function SessionDetailPage() {
                             onChange={(event) =>
                               updateAddDraft(sessionExercise.id, "weightKg", event.target.value)
                             }
-                            className="w-24 rounded-md border px-2 py-1"
+                            className="w-24 rounded-md border bg-white px-2 py-1"
                             placeholder="Weight"
                           />
                         </td>
@@ -764,25 +935,16 @@ export default function SessionDetailPage() {
                           />
                         </td>
                         <td className="px-2 py-2">
-                          <input
-                            type="text"
-                            value={addDraft.notes}
-                            onChange={(event) =>
-                              updateAddDraft(sessionExercise.id, "notes", event.target.value)
-                            }
-                            className="w-full min-w-[180px] rounded-md border px-2 py-1"
-                            placeholder="Optional notes"
-                          />
-                        </td>
-                        <td className="px-2 py-2">
-                          <button
-                            type="button"
-                            onClick={() => handleAddSet(sessionExercise.id)}
-                            disabled={isSavingSet}
-                            className="rounded-md border px-2 py-1 text-xs"
-                          >
-                            Add set
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleAddSet(sessionExercise.id)}
+                              disabled={isSavingSet}
+                              className="rounded-md border px-2 py-1 text-xs"
+                            >
+                              Add set
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ) : null}
@@ -791,127 +953,156 @@ export default function SessionDetailPage() {
               </div>
             </section>
           );
-        })
-      )}
+            })}
+          </div>
+        )}
 
-      {!isReadOnly ? (
-        <section className="panel p-5 text-sm">
-        <h2 className="text-base font-medium">Add exercise to this session</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm font-medium sm:col-span-2">
-            Exercise
-            <select
-              value={addExerciseDraft.exerciseId}
-              onChange={(event) =>
-                setAddExerciseDraft((prev) => ({ ...prev, exerciseId: event.target.value }))
-              }
-              className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-            >
-              <option value="">Select exercise</option>
-              {exerciseOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm font-medium">
-            Base weight (kg)
-            <input
-              type="number"
-              min={0}
-              step="0.5"
-              value={addExerciseDraft.baseWeightKg}
-              onChange={(event) =>
-                setAddExerciseDraft((prev) => ({ ...prev, baseWeightKg: event.target.value }))
-              }
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="e.g. 20"
-            />
-            <div className="mt-1 flex flex-wrap gap-1">
-              {[20, 15, 10, 0].map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() =>
-                    setAddExerciseDraft((prev) => ({
-                      ...prev,
-                      baseWeightKg: value === 0 ? "" : String(value),
-                    }))
-                  }
-                  className="rounded border px-2 py-0.5 text-xs"
-                >
-                  +{value}
-                </button>
-              ))}
+        {!isReadOnly ? (
+          <section className="panel panel-nested panel-nested-even mt-4 p-5 text-sm">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAddExerciseExpanded((prev) => !prev)}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-amber-100 hover:text-amber-700"
+                aria-label={isAddExerciseExpanded ? "Collapse add exercise section" : "Expand add exercise section"}
+              >
+                {isAddExerciseExpanded ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddExerciseExpanded((prev) => !prev)}
+                className="text-base font-medium hover:text-amber-700"
+              >
+                Add exercise to this session
+              </button>
             </div>
-          </label>
-          <label className="block text-sm font-medium">
-            Target sets
-            <input
-              type="number"
-              min={1}
-              value={addExerciseDraft.targetSets}
-              onChange={(event) =>
-                setAddExerciseDraft((prev) => ({ ...prev, targetSets: event.target.value }))
-              }
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="e.g. 3"
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            Target reps
-            <input
-              type="number"
-              min={1}
-              value={addExerciseDraft.targetReps}
-              onChange={(event) =>
-                setAddExerciseDraft((prev) => ({ ...prev, targetReps: event.target.value }))
-              }
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="e.g. 8"
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            Target weight (kg)
-            <input
-              type="number"
-              min={0}
-              step="0.5"
-              value={addExerciseDraft.targetWeightKg}
-              onChange={(event) =>
-                setAddExerciseDraft((prev) => ({ ...prev, targetWeightKg: event.target.value }))
-              }
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="e.g. 60"
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            Notes (optional)
-            <input
-              type="text"
-              value={addExerciseDraft.notes}
-              onChange={(event) =>
-                setAddExerciseDraft((prev) => ({ ...prev, notes: event.target.value }))
-              }
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="Optional exercise notes"
-            />
-          </label>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={addExerciseToSession}
-            disabled={isAddingExercise}
-            className="inline-flex h-10 items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:opacity-60"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {isAddingExercise ? "Adding..." : "Add exercise"}
-          </button>
-        </div>
-        </section>
-      ) : null}
+            {isAddExerciseExpanded ? (
+              <>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm font-medium sm:col-span-2">
+                    Exercise
+                    <select
+                      value={addExerciseDraft.exerciseId}
+                      onChange={(event) =>
+                        setAddExerciseDraft((prev) => ({ ...prev, exerciseId: event.target.value }))
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                    >
+                      <option value="">Select exercise</option>
+                      {exerciseOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Base weight (kg)
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.5"
+                      value={addExerciseDraft.baseWeightKg}
+                      onChange={(event) =>
+                        setAddExerciseDraft((prev) => ({ ...prev, baseWeightKg: event.target.value }))
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="e.g. 20"
+                    />
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {[20, 15, 10, 0].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() =>
+                            setAddExerciseDraft((prev) => ({
+                              ...prev,
+                              baseWeightKg: value === 0 ? "" : String(value),
+                            }))
+                          }
+                          className="rounded border bg-white px-2 py-0.5 text-xs"
+                        >
+                          +{value}
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Target sets
+                    <input
+                      type="number"
+                      min={1}
+                      value={addExerciseDraft.targetSets}
+                      onChange={(event) =>
+                        setAddExerciseDraft((prev) => ({ ...prev, targetSets: event.target.value }))
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="e.g. 3"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Target reps
+                    <input
+                      type="number"
+                      min={1}
+                      value={addExerciseDraft.targetReps}
+                      onChange={(event) =>
+                        setAddExerciseDraft((prev) => ({ ...prev, targetReps: event.target.value }))
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="e.g. 8"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Target weight (kg)
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.5"
+                      value={addExerciseDraft.targetWeightKg}
+                      onChange={(event) =>
+                        setAddExerciseDraft((prev) => ({
+                          ...prev,
+                          targetWeightKg: event.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="e.g. 60"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Notes (optional)
+                    <input
+                      type="text"
+                      value={addExerciseDraft.notes}
+                      onChange={(event) =>
+                        setAddExerciseDraft((prev) => ({ ...prev, notes: event.target.value }))
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="Optional exercise notes"
+                    />
+                  </label>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={addExerciseToSession}
+                    disabled={isAddingExercise}
+                    className="inline-flex h-10 items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:opacity-60"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {isAddingExercise ? "Adding..." : "Add exercise"}
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </section>
+        ) : null}
+      </section>
 
       {message ? <section className="panel p-4 text-sm text-red-600">{message}</section> : null}
     </main>

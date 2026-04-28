@@ -155,6 +155,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_exercise_defaults: {
+        Row: {
+          user_id: string;
+          exercise_id: string;
+          default_base_weight_kg: number | null;
+          default_target_sets: number | null;
+          default_target_reps: number | null;
+          default_target_weight_kg: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          exercise_id: string;
+          default_base_weight_kg?: number | null;
+          default_target_sets?: number | null;
+          default_target_reps?: number | null;
+          default_target_weight_kg?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          exercise_id?: string;
+          default_base_weight_kg?: number | null;
+          default_target_sets?: number | null;
+          default_target_reps?: number | null;
+          default_target_weight_kg?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

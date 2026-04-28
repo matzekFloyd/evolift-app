@@ -62,6 +62,13 @@ button:not(:disabled):hover {
   background-color: var(--accent-soft);
 }
 
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+}
+
 button.bg-black:not(:disabled):hover {
   border-color: var(--accent);
   background-color: var(--accent-soft);
@@ -73,8 +80,21 @@ button:disabled {
 }
 
 .panel {
-  border: 1px solid #f59e0b;
+  border: 1px solid #d4d4d8;
   border-radius: 0.75rem;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.panel-nested {
+  border-color: #e4e4e7;
+  box-shadow: none;
+}
+
+.panel-nested-odd {
+  background: #f4f4f5;
+}
+
+.panel-nested-even {
+  background: #e4e4e7;
 }

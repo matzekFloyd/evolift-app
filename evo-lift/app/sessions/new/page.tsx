@@ -43,6 +43,8 @@ type NewSessionDraft = {
   exerciseRows: ExerciseDraftRow[];
 };
 
+type ExerciseDefaultsRow = Database["public"]["Tables"]["user_exercise_defaults"]["Row"];
+
 const emptyExerciseRow: ExerciseDraftRow = {
   exerciseId: "",
   baseWeightKg: "",
@@ -65,17 +67,32 @@ export default function NewSessionPage() {
   const [exerciseRows, setExerciseRows] = useState<ExerciseDraftRow[]>([
     emptyExerciseRow,
   ]);
+  const [exerciseDefaultsById, setExerciseDefaultsById] = useState<
+    Map<string, ExerciseDefaultsRow>
+  >(new Map());
   const [expandedExerciseNotes, setExpandedExerciseNotes] = useState<Set<number>>(new Set());
   const [collapsedExercises, setCollapsedExercises] = useState<Set<number>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
+  const [savingDefaultsRowIndex, setSavingDefaultsRowIndex] = useState<number | null>(null);
   const [createMode, setCreateMode] = useState<"home" | "log">("home");
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"error" | "success">("error");
   const maxNotesLength = 500;
 
   const trimmedNotes = useMemo(() => notes.trim(), [notes]);
 
   function getDraftStorageKey(currentUserId: string): string {
     return `${NEW_SESSION_DRAFT_KEY}:${currentUserId}`;
+  }
+
+  function showError(messageText: string) {
+    setMessageTone("error");
+    setMessage(messageText);
+  }
+
+  function showSuccess(messageText: string) {
+    setMessageTone("success");
+    setMessage(messageText);
   }
 
   function resetDraftState() {
@@ -115,7 +132,7 @@ export default function NewSessionPage() {
       }
 
       if (exercisesError) {
-        setMessage("Could not load exercises.");
+        showError("Could not load exercises.");
         setIsChecking(false);
         return;
       }
@@ -134,7 +151,23 @@ export default function NewSessionPage() {
         id: exercise.id,
         label: translationMap.get(exercise.id) ?? exercise.slug,
       }));
+
+      const { data: defaultsData, error: defaultsError } = await supabaseBrowserClient
+        .from("user_exercise_defaults")
+        .select("*")
+        .eq("user_id", session.user.id);
+      if (defaultsError) {
+        showError("Could not load exercise defaults.");
+        setIsChecking(false);
+        return;
+      }
+      const defaultsMap = new Map<string, ExerciseDefaultsRow>();
+      for (const item of defaultsData ?? []) {
+        defaultsMap.set(item.exercise_id, item);
+      }
+
       setExerciseOptions(options);
+      setExerciseDefaultsById(defaultsMap);
       setIsChecking(false);
     }
 
@@ -206,19 +239,19 @@ export default function NewSessionPage() {
     event.preventDefault();
 
     if (!userId) {
-      setMessage("You must be logged in to create a workout session.");
+      showError("You must be logged in to create a workout session.");
       return;
     }
     if (!performedOn) {
-      setMessage("Please choose a performed date.");
+      showError("Please choose a performed date.");
       return;
     }
     if (exerciseRows.length === 0) {
-      setMessage("Add at least one exercise.");
+      showError("Add at least one exercise.");
       return;
     }
     if (exerciseRows.some((row) => !row.exerciseId)) {
-      setMessage("Please choose an exercise for each row.");
+      showError("Please choose an exercise for each row.");
       return;
     }
     if (
@@ -230,7 +263,7 @@ export default function NewSessionPage() {
         return !Number.isFinite(value) || value < 0;
       })
     ) {
-      setMessage("Please enter a valid base weight for each exercise.");
+      showError("Please enter a valid base weight for each exercise.");
       return;
     }
 
@@ -248,7 +281,7 @@ export default function NewSessionPage() {
       .single();
 
     if (error || !sessionInsert) {
-      setMessage(`Could not create workout session: ${error.message}`);
+      showError(`Could not create workout session: ${error.message}`);
       setIsSaving(false);
       return;
     }
@@ -281,7 +314,7 @@ export default function NewSessionPage() {
         .from("workout_sessions")
         .delete()
         .eq("id", sessionInsert.id);
-      setMessage(
+      showError(
         `Could not create workout session exercises: ${exercisesInsertError.message}`,
       );
       setIsSaving(false);
@@ -344,6 +377,115 @@ export default function NewSessionPage() {
           : row,
       ),
     );
+  }
+
+  function handleExerciseSelect(index: number, selectedExerciseId: string) {
+    setExerciseRows((prev) =>
+      prev.map((row, currentIndex) => {
+        if (currentIndex !== index) {
+          return row;
+        }
+
+        const defaults = exerciseDefaultsById.get(selectedExerciseId);
+        if (!defaults) {
+          return {
+            ...row,
+            exerciseId: selectedExerciseId,
+          };
+        }
+
+        return {
+          ...row,
+          exerciseId: selectedExerciseId,
+          baseWeightKg:
+            row.baseWeightKg || defaults.default_base_weight_kg == null
+              ? row.baseWeightKg
+              : String(defaults.default_base_weight_kg),
+          targetSets:
+            row.targetSets || defaults.default_target_sets == null
+              ? row.targetSets
+              : String(defaults.default_target_sets),
+          targetReps:
+            row.targetReps || defaults.default_target_reps == null
+              ? row.targetReps
+              : String(defaults.default_target_reps),
+          targetWeightKg:
+            row.targetWeightKg || defaults.default_target_weight_kg == null
+              ? row.targetWeightKg
+              : String(defaults.default_target_weight_kg),
+        };
+      }),
+    );
+  }
+
+  async function saveExerciseDefaults(index: number) {
+    if (!userId) {
+      showError("You must be logged in to save defaults.");
+      return;
+    }
+
+    const row = exerciseRows[index];
+    if (!row || !row.exerciseId) {
+      showError("Select an exercise first.");
+      return;
+    }
+
+    const parsedBaseWeight = row.baseWeightKg ? Number(row.baseWeightKg) : null;
+    const parsedSets = row.targetSets ? Number(row.targetSets) : null;
+    const parsedReps = row.targetReps ? Number(row.targetReps) : null;
+    const parsedTargetWeight = row.targetWeightKg ? Number(row.targetWeightKg) : null;
+
+    if (parsedBaseWeight !== null && (!Number.isFinite(parsedBaseWeight) || parsedBaseWeight < 0)) {
+      showError("Please enter a valid base weight before saving defaults.");
+      return;
+    }
+    if (parsedSets !== null && (!Number.isFinite(parsedSets) || parsedSets <= 0)) {
+      showError("Please enter a valid target sets value before saving defaults.");
+      return;
+    }
+    if (parsedReps !== null && (!Number.isFinite(parsedReps) || parsedReps <= 0)) {
+      showError("Please enter a valid target reps value before saving defaults.");
+      return;
+    }
+    if (
+      parsedTargetWeight !== null &&
+      (!Number.isFinite(parsedTargetWeight) || parsedTargetWeight < 0)
+    ) {
+      showError("Please enter a valid target weight before saving defaults.");
+      return;
+    }
+
+    setSavingDefaultsRowIndex(index);
+    setMessage(null);
+
+    const payload: Database["public"]["Tables"]["user_exercise_defaults"]["Insert"] = {
+      user_id: userId,
+      exercise_id: row.exerciseId,
+      default_base_weight_kg: parsedBaseWeight,
+      default_target_sets: parsedSets,
+      default_target_reps: parsedReps,
+      default_target_weight_kg: parsedTargetWeight,
+    };
+
+    const { data, error } = await supabaseBrowserClient
+      .from("user_exercise_defaults")
+      .upsert(payload, { onConflict: "user_id,exercise_id" })
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      showError(`Could not save defaults: ${error?.message ?? "Unknown error"}`);
+      setSavingDefaultsRowIndex(null);
+      return;
+    }
+
+    setExerciseDefaultsById((prev) => {
+      const next = new Map(prev);
+      next.set(data.exercise_id, data);
+      return next;
+    });
+    setSavingDefaultsRowIndex(null);
+    showSuccess("Defaults saved for this exercise.");
   }
 
   function clearDraft() {
@@ -477,30 +619,36 @@ export default function NewSessionPage() {
               </div>
             </div>
             {exerciseRows.map((row, index) => (
-              <div key={index} className="rounded-md border p-3">
+              <div
+                key={index}
+                className={`panel panel-nested p-3 ${
+                  index % 2 === 0 ? "panel-nested-odd" : "panel-nested-even"
+                }`}
+              >
                 {/** Optional per-exercise notes are collapsed by default for less visual noise. */}
                 <div className="mb-2 mt-1 flex items-center justify-between">
-                  <div className="inline-flex min-h-6 items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => toggleExerciseCollapsed(index)}
-                      className="inline-flex items-center rounded p-1 hover:bg-amber-100 hover:text-amber-700"
-                      aria-label={
-                        collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"
-                      }
-                      title={collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"}
-                    >
+                  <button
+                    type="button"
+                    onClick={() => toggleExerciseCollapsed(index)}
+                    className="inline-flex min-h-6 items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-zinc-100 hover:text-zinc-800"
+                    aria-label={
+                      collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"
+                    }
+                    title={collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"}
+                  >
+                    <span className="inline-flex h-6 w-6 items-center justify-center">
                       {collapsedExercises.has(index) ? (
                         <ChevronDown className="h-4 w-4" />
                       ) : (
                         <ChevronUp className="h-4 w-4" />
                       )}
-                    </button>
-                    <p className="inline-flex min-h-6 items-center text-sm font-medium text-zinc-600">
-                      Exercise #{index + 1}
+                    </span>
+                    <span className="inline-flex h-6 items-center leading-none text-sm font-medium text-zinc-600">
                       {(() => {
+                        const baseTitle = `Exercise #${index + 1}`;
                         const label = row.exerciseId
-                          ? (exerciseOptions.find((option) => option.id === row.exerciseId)?.label ?? row.exerciseId)
+                          ? (exerciseOptions.find((option) => option.id === row.exerciseId)?.label ??
+                            row.exerciseId)
                           : null;
                         const details = [
                           row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
@@ -510,18 +658,27 @@ export default function NewSessionPage() {
                         ]
                           .filter(Boolean)
                           .join(", ");
-                        let summary = "";
+
+                        const mobileTitle = [baseTitle, label].filter(Boolean).join(" - ");
+
+                        let desktopTitle = baseTitle;
                         if (label && details) {
-                          summary = ` - ${label} (${details})`;
+                          desktopTitle = [baseTitle, `${label} (${details})`].join(" - ");
                         } else if (label) {
-                          summary = ` - ${label}`;
+                          desktopTitle = [baseTitle, label].join(" - ");
                         } else if (details) {
-                          summary = ` - ${details}`;
+                          desktopTitle = [baseTitle, details].join(" - ");
                         }
-                        return summary ? <span className="hidden md:inline">{summary}</span> : null;
+
+                        return (
+                          <>
+                            <span className="md:hidden">{mobileTitle}</span>
+                            <span className="hidden md:inline">{desktopTitle}</span>
+                          </>
+                        );
                       })()}
-                    </p>
-                  </div>
+                    </span>
+                  </button>
                   <div className="inline-flex min-h-6 items-center gap-2">
                     {exerciseRows.length > 1 ? (
                       <button
@@ -536,7 +693,7 @@ export default function NewSessionPage() {
                 </div>
                 {collapsedExercises.has(index) ? null : (
                   <>
-                <label className="block text-sm font-medium">
+                <label className="mt-2 block text-sm font-medium">
                   <span className="inline-flex items-center gap-1">
                     <ListChecks className="h-3.5 w-3.5 text-zinc-500" />
                     Exercise
@@ -544,9 +701,7 @@ export default function NewSessionPage() {
                   <select
                     required
                     value={row.exerciseId}
-                    onChange={(event) =>
-                      updateExerciseRow(index, "exerciseId", event.target.value)
-                    }
+                    onChange={(event) => handleExerciseSelect(index, event.target.value)}
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                   >
                     <option value="">Select exercise</option>
@@ -568,7 +723,7 @@ export default function NewSessionPage() {
                       onChange={(event) =>
                         updateExerciseRow(index, "baseWeightKg", event.target.value)
                       }
-                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                       placeholder="e.g. 20"
                     />
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -583,7 +738,7 @@ export default function NewSessionPage() {
                               value === 0 ? "" : String(value),
                             )
                           }
-                          className="rounded border px-2 py-0.5 text-xs"
+                          className="rounded border bg-white px-2 py-0.5 text-xs"
                         >
                           +{value}
                         </button>
@@ -599,7 +754,7 @@ export default function NewSessionPage() {
                       onChange={(event) =>
                         updateExerciseRow(index, "targetSets", event.target.value)
                       }
-                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                       placeholder="e.g. 3"
                     />
                   </label>
@@ -612,7 +767,7 @@ export default function NewSessionPage() {
                       onChange={(event) =>
                         updateExerciseRow(index, "targetReps", event.target.value)
                       }
-                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                       placeholder="e.g. 8"
                     />
                   </label>
@@ -626,10 +781,20 @@ export default function NewSessionPage() {
                       onChange={(event) =>
                         updateExerciseRow(index, "targetWeightKg", event.target.value)
                       }
-                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                       placeholder="e.g. 60"
                     />
                   </label>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => saveExerciseDefaults(index)}
+                    disabled={savingDefaultsRowIndex === index || !row.exerciseId}
+                    className="inline-flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-xs hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:opacity-60"
+                  >
+                    {savingDefaultsRowIndex === index ? "Saving..." : "Save as default"}
+                  </button>
                 </div>
                 <div className="mt-3 block text-sm font-medium">
                   <button
@@ -648,7 +813,7 @@ export default function NewSessionPage() {
                       onChange={(event) =>
                         updateExerciseRow(index, "notes", event.target.value)
                       }
-                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                       placeholder="Optional notes for this exercise"
                     />
                   ) : null}
@@ -683,7 +848,15 @@ export default function NewSessionPage() {
           </div>
         </form>
       </section>
-      {message ? <section className="panel p-4 text-sm text-red-600">{message}</section> : null}
+      {message ? (
+        <section
+          className={`panel p-4 text-sm ${
+            messageTone === "error" ? "text-red-600" : "text-emerald-700"
+          }`}
+        >
+          {message}
+        </section>
+      ) : null}
     </main>
   );
 }
