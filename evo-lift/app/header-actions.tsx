@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpenText, Dumbbell, House, LogOut } from "lucide-react";
+import { Dumbbell, House, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -84,18 +84,7 @@ export function HeaderActions() {
             href="/"
           >
             <House className="h-3.5 w-3.5" />
-            App
-          </Link>
-          <Link
-            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium sm:text-sm ${
-              pathname === "/docs"
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-700 hover:bg-zinc-100"
-            }`}
-            href="/docs"
-          >
-            <BookOpenText className="h-3.5 w-3.5" />
-            Docs
+            Home
           </Link>
           <button
             type="button"

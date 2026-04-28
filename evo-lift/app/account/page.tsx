@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Lock, Mail, UserRound } from "lucide-react";
+import { Lock, Mail, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -9,8 +9,6 @@ export default function AccountPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -37,7 +35,6 @@ export default function AccountPage() {
       }
 
       setUserEmail(session.user.email ?? null);
-      setAccessToken(session.access_token ?? null);
       setIsChecking(false);
     }
 
@@ -47,15 +44,6 @@ export default function AccountPage() {
       isMounted = false;
     };
   }, [router]);
-
-  async function handleCopyToken() {
-    if (!accessToken) {
-      return;
-    }
-    await navigator.clipboard.writeText(accessToken);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
-  }
 
   async function handleEmailUpdate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -265,26 +253,6 @@ export default function AccountPage() {
       {accountMessage ? (
         <section className="panel p-4 text-sm text-zinc-700">{accountMessage}</section>
       ) : null}
-      <section className="panel space-y-2 p-5 text-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-medium">Access token</h2>
-          <button
-            type="button"
-            onClick={handleCopyToken}
-            disabled={!accessToken}
-            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs disabled:opacity-60"
-            aria-label="Copy access token"
-          >
-            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
-        <textarea
-          readOnly
-          value={accessToken ?? "none"}
-          className="h-32 w-full rounded-md border bg-white px-2 py-1 font-mono text-xs"
-        />
-      </section>
     </main>
   );
 }
