@@ -92,10 +92,10 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-14">
-      <section className="rounded-xl border p-4">
+      <section className="panel p-4">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="text-lg font-semibold tracking-tight">EvoLift</div>
-          <div className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-1">
+          <div className="inline-flex rounded-lg border border-amber-200 bg-amber-50 p-1">
             <button
               type="button"
               onClick={() => {
@@ -104,8 +104,8 @@ export default function LoginPage() {
               }}
               className={`w-24 rounded-md px-3 py-1.5 text-sm font-medium ${
                 mode === "login"
-                  ? "bg-zinc-100 text-zinc-900"
-                  : "text-zinc-600 hover:bg-zinc-100"
+                  ? "bg-amber-100 text-amber-900"
+                  : "text-zinc-600 hover:bg-amber-100 hover:text-amber-900"
               }`}
             >
               Log in
@@ -118,8 +118,8 @@ export default function LoginPage() {
               }}
               className={`w-24 rounded-md px-3 py-1.5 text-sm font-medium ${
                 mode === "register"
-                  ? "bg-zinc-100 text-zinc-900"
-                  : "text-zinc-600 hover:bg-zinc-100"
+                  ? "bg-amber-100 text-amber-900"
+                  : "text-zinc-600 hover:bg-amber-100 hover:text-amber-900"
               }`}
             >
               Register
@@ -159,7 +159,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-24 cursor-pointer rounded-md bg-black px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-24 cursor-pointer rounded-md border border-black bg-black px-4 py-2 text-sm text-white shadow-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading
                 ? "Please wait..."
