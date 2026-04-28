@@ -1,6 +1,7 @@
 "use client";
 
-import { ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { ClipboardList, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -87,6 +88,17 @@ export default function Home() {
     });
   }
 
+  const sessionNumberById = useMemo(() => {
+    const byCreatedAtAsc = [...sessions].sort(
+      (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at),
+    );
+    const numberMap = new Map<string, number>();
+    byCreatedAtAsc.forEach((session, index) => {
+      numberMap.set(session.id, index + 1);
+    });
+    return numberMap;
+  }, [sessions]);
+
   const sortedSessions = useMemo(() => {
     const sorted = [...sessions];
     sorted.sort((a, b) => {
@@ -94,8 +106,8 @@ export default function Home() {
       let right: number | string = "";
 
       if (sortKey === "number") {
-        left = Date.parse(a.created_at);
-        right = Date.parse(b.created_at);
+        left = sessionNumberById.get(a.id) ?? 0;
+        right = sessionNumberById.get(b.id) ?? 0;
       } else if (sortKey === "performed_on") {
         left = a.performed_on;
         right = b.performed_on;
@@ -113,7 +125,7 @@ export default function Home() {
       return 0;
     });
     return sorted;
-  }, [sessions, sortDirection, sortKey]);
+  }, [sessionNumberById, sessions, sortDirection, sortKey]);
 
   function renderSortIndicator(column: SortKey) {
     if (sortKey !== column) {
@@ -132,10 +144,21 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
-      <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
-        <ClipboardList className="h-6 w-6 text-amber-700" />
-        Workout sessions
-      </h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <ClipboardList className="h-6 w-6 text-amber-700" />
+          Workout sessions
+        </h1>
+        <Link
+          href="/sessions/new"
+          className="inline-flex h-10 items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm font-medium hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700"
+          aria-label="Add workout session"
+          title="Add workout session"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Add workout session</span>
+        </Link>
+      </div>
       <section className="panel p-5">
         {sessionsError ? (
           <p className="text-sm text-red-600">{sessionsError}</p>
@@ -177,17 +200,11 @@ export default function Home() {
                 {sortedSessions.length === 0 ? (
                   <tr>
                     <td className="break-words whitespace-normal px-2 py-4 text-zinc-600" colSpan={2}>
-                      No workout sessions are stored yet.{" "}
-                      <a
-                        href="/sessions/new"
-                        className="font-medium underline"
-                      >
-                        Start tracking
-                      </a>
+                      No workout sessions are stored yet.
                     </td>
                   </tr>
                 ) : (
-                  sortedSessions.map((session, index) => {
+                  sortedSessions.map((session) => {
                     const notes = session.notes ?? "";
                     const isExpanded = expandedNotesIds.has(session.id);
                     const needsTruncate = notes.length > 64;
@@ -200,7 +217,7 @@ export default function Home() {
                       className="cursor-pointer border-b last:border-b-0 hover:bg-amber-50"
                       onClick={() => router.push(`/sessions/${session.id}`)}
                     >
-                      <td className="px-2 py-2">{index + 1}</td>
+                      <td className="px-2 py-2">{sessionNumberById.get(session.id) ?? "-"}</td>
                       <td className="px-2 py-2">{session.performed_on}</td>
                       <td className="hidden px-2 py-2 md:table-cell">
                         <span>{visibleNotes}</span>

@@ -33,7 +33,6 @@ values
   ('goblet-squat'),
   ('hammer-curl'),
   ('hanging-leg-raise'),
-  ('hip-abduction'),
   ('lat-pulldown'),
   ('lying-leg-curl'),
   ('seated-leg-curl'),

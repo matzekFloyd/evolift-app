@@ -154,10 +154,7 @@ export default function AccountPage() {
           Email
         </h2>
         <label className="mt-3 block text-sm font-medium">
-          <span className="inline-flex items-center gap-1">
-            <Mail className="h-3.5 w-3.5 text-zinc-500" />
-            Current email
-          </span>
+          Current email
           <input
             type="email"
             readOnly
@@ -167,10 +164,7 @@ export default function AccountPage() {
         </label>
         <form onSubmit={handleEmailUpdate} className="mt-4 space-y-3">
           <label className="block text-sm font-medium">
-            <span className="inline-flex items-center gap-1">
-              <Mail className="h-3.5 w-3.5 text-zinc-500" />
-              New email
-            </span>
+            New email
             <input
               type="email"
               required
@@ -198,10 +192,7 @@ export default function AccountPage() {
         </h2>
         <form onSubmit={handlePasswordUpdate} className="mt-3 space-y-3">
           <label className="block text-sm font-medium">
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3.5 w-3.5 text-zinc-500" />
-              Current password
-            </span>
+            Current password
             <input
               type="password"
               required
@@ -212,10 +203,7 @@ export default function AccountPage() {
             />
           </label>
           <label className="block text-sm font-medium">
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3.5 w-3.5 text-zinc-500" />
-              New password
-            </span>
+            New password
             <input
               type="password"
               required
@@ -226,10 +214,7 @@ export default function AccountPage() {
             />
           </label>
           <label className="block text-sm font-medium">
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3.5 w-3.5 text-zinc-500" />
-              Confirm new password
-            </span>
+            Confirm new password
             <input
               type="password"
               required

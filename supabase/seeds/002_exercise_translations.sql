@@ -33,7 +33,6 @@ with exercise_seed(slug, name_en, name_de) as (
   ('goblet-squat', 'Goblet Squat', 'Kelchkniebeuge'),
   ('hammer-curl', 'Hammer Curl', 'Hammer-Bizepscurl'),
   ('hanging-leg-raise', 'Hanging Leg Raise', 'Haengendes Beinheben'),
-  ('hip-abduction', 'Hip Abduction', 'Hueftabduktion'),
   ('lat-pulldown', 'Lat Pulldown', 'Latzug'),
   ('lying-leg-curl', 'Lying Leg Curl', 'Liegender Beinbeuger'),
   ('seated-leg-curl', 'Seated Leg Curl', 'Sitzender Beinbeuger'),

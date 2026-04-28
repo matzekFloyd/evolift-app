@@ -3,6 +3,8 @@
 import { ArrowLeft, CalendarPlus } from "lucide-react";
 import {
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   Check,
   Dumbbell,
   Eraser,
@@ -56,12 +58,15 @@ export default function NewSessionPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [performedOn, setPerformedOn] = useState(getTodayDateString);
   const [notes, setNotes] = useState("");
+  const [isSessionNotesExpanded, setIsSessionNotesExpanded] = useState(false);
   const [exerciseOptions, setExerciseOptions] = useState<
     Array<{ id: string; label: string }>
   >([]);
   const [exerciseRows, setExerciseRows] = useState<ExerciseDraftRow[]>([
     emptyExerciseRow,
   ]);
+  const [expandedExerciseNotes, setExpandedExerciseNotes] = useState<Set<number>>(new Set());
+  const [collapsedExercises, setCollapsedExercises] = useState<Set<number>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [createMode, setCreateMode] = useState<"home" | "log">("home");
   const [message, setMessage] = useState<string | null>(null);
@@ -76,7 +81,10 @@ export default function NewSessionPage() {
   function resetDraftState() {
     setPerformedOn(getTodayDateString());
     setNotes("");
+    setIsSessionNotesExpanded(false);
     setExerciseRows([{ ...emptyExerciseRow }]);
+    setExpandedExerciseNotes(new Set());
+    setCollapsedExercises(new Set());
   }
 
   useEffect(() => {
@@ -154,8 +162,15 @@ export default function NewSessionPage() {
       }
       if (typeof parsed.notes === "string") {
         setNotes(parsed.notes);
+        setIsSessionNotesExpanded(parsed.notes.trim().length > 0);
       }
       if (Array.isArray(parsed.exerciseRows) && parsed.exerciseRows.length > 0) {
+        const preExpanded = new Set<number>();
+        parsed.exerciseRows.forEach((row, index) => {
+          if (typeof row.notes === "string" && row.notes.trim().length > 0) {
+            preExpanded.add(index);
+          }
+        });
         setExerciseRows(
           parsed.exerciseRows.map((row) => ({
             exerciseId: row.exerciseId ?? "",
@@ -166,6 +181,7 @@ export default function NewSessionPage() {
             notes: row.notes ?? "",
           })),
         );
+        setExpandedExerciseNotes(preExpanded);
       }
     } catch {
       // Ignore invalid local draft payloads.
@@ -285,6 +301,26 @@ export default function NewSessionPage() {
 
   function removeExerciseRow(index: number) {
     setExerciseRows((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
+    setExpandedExerciseNotes((prev) => {
+      const next = new Set<number>();
+      for (const currentIndex of prev) {
+        if (currentIndex === index) {
+          continue;
+        }
+        next.add(currentIndex > index ? currentIndex - 1 : currentIndex);
+      }
+      return next;
+    });
+    setCollapsedExercises((prev) => {
+      const next = new Set<number>();
+      for (const currentIndex of prev) {
+        if (currentIndex === index) {
+          continue;
+        }
+        next.add(currentIndex > index ? currentIndex - 1 : currentIndex);
+      }
+      return next;
+    });
   }
 
   function updateExerciseRow(
@@ -318,6 +354,30 @@ export default function NewSessionPage() {
     resetDraftState();
   }
 
+  function toggleExerciseNotes(index: number) {
+    setExpandedExerciseNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }
+
+  function toggleExerciseCollapsed(index: number) {
+    setCollapsedExercises((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }
+
   function goBack() {
     if (window.history.length > 1) {
       router.back();
@@ -336,18 +396,20 @@ export default function NewSessionPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
-      <button
-        type="button"
-        onClick={goBack}
-        className="inline-flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </button>
-      <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
-        <CalendarPlus className="h-6 w-6 text-amber-700" />
-        New workout session
-      </h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <CalendarPlus className="h-6 w-6 text-amber-700" />
+          New workout session
+        </h1>
+        <button
+          type="button"
+          onClick={goBack}
+          className="inline-flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+      </div>
       <section className="panel p-5 text-sm">
         <form onSubmit={handleCreateSession} className="space-y-4">
           <label className="block text-sm font-medium">
@@ -364,22 +426,30 @@ export default function NewSessionPage() {
             />
           </label>
 
-          <label className="block text-sm font-medium">
-            <span className="inline-flex items-center gap-1">
+          <div className="block text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setIsSessionNotesExpanded((prev) => !prev)}
+              className="inline-flex items-center gap-1 text-left hover:text-amber-700"
+            >
               <NotebookPen className="h-3.5 w-3.5 text-zinc-500" />
-              Notes (optional)
-            </span>
-            <textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className="mt-1 h-28 w-full rounded-md border px-3 py-2 text-sm"
-              maxLength={maxNotesLength}
-              placeholder="Optional session notes"
-            />
-            <p className="mt-1 text-xs text-zinc-500">
-              {notes.length}/{maxNotesLength}
-            </p>
-          </label>
+              {isSessionNotesExpanded ? "Hide notes" : "Add notes (optional)"}
+            </button>
+            {isSessionNotesExpanded ? (
+              <>
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  className="mt-1 h-28 w-full rounded-md border px-3 py-2 text-sm"
+                  maxLength={maxNotesLength}
+                  placeholder="Optional session notes"
+                />
+                <p className="mt-1 text-xs text-zinc-500">
+                  {notes.length}/{maxNotesLength}
+                </p>
+              </>
+            ) : null}
+          </div>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -408,18 +478,64 @@ export default function NewSessionPage() {
             </div>
             {exerciseRows.map((row, index) => (
               <div key={index} className="rounded-md border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-medium text-zinc-600">Exercise #{index + 1}</p>
-                  {exerciseRows.length > 1 ? (
+                {/** Optional per-exercise notes are collapsed by default for less visual noise. */}
+                <div className="mb-2 mt-1 flex items-center justify-between">
+                  <div className="inline-flex min-h-6 items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => removeExerciseRow(index)}
-                      className="text-xs underline"
+                      onClick={() => toggleExerciseCollapsed(index)}
+                      className="inline-flex items-center rounded p-1 hover:bg-amber-100 hover:text-amber-700"
+                      aria-label={
+                        collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"
+                      }
+                      title={collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"}
                     >
-                      Remove
+                      {collapsedExercises.has(index) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4" />
+                      )}
                     </button>
-                  ) : null}
+                    <p className="inline-flex min-h-6 items-center text-sm font-medium text-zinc-600">
+                      Exercise #{index + 1}
+                      {(() => {
+                        const label = row.exerciseId
+                          ? (exerciseOptions.find((option) => option.id === row.exerciseId)?.label ?? row.exerciseId)
+                          : null;
+                        const details = [
+                          row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
+                          row.targetSets ? `${row.targetSets} sets` : null,
+                          row.targetReps ? `${row.targetReps} reps` : null,
+                          row.targetWeightKg ? `target ${row.targetWeightKg} kg` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(", ");
+                        let summary = "";
+                        if (label && details) {
+                          summary = ` - ${label} (${details})`;
+                        } else if (label) {
+                          summary = ` - ${label}`;
+                        } else if (details) {
+                          summary = ` - ${details}`;
+                        }
+                        return summary ? <span className="hidden md:inline">{summary}</span> : null;
+                      })()}
+                    </p>
+                  </div>
+                  <div className="inline-flex min-h-6 items-center gap-2">
+                    {exerciseRows.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => removeExerciseRow(index)}
+                        className="inline-flex items-center text-xs underline"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
+                {collapsedExercises.has(index) ? null : (
+                  <>
                 <label className="block text-sm font-medium">
                   <span className="inline-flex items-center gap-1">
                     <ListChecks className="h-3.5 w-3.5 text-zinc-500" />
@@ -515,18 +631,30 @@ export default function NewSessionPage() {
                     />
                   </label>
                 </div>
-                <label className="mt-3 block text-sm font-medium">
-                  Exercise notes (optional)
-                  <input
-                    type="text"
-                    value={row.notes}
-                    onChange={(event) =>
-                      updateExerciseRow(index, "notes", event.target.value)
-                    }
-                    className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                    placeholder="Optional notes for this exercise"
-                  />
-                </label>
+                <div className="mt-3 block text-sm font-medium">
+                  <button
+                    type="button"
+                    onClick={() => toggleExerciseNotes(index)}
+                    className="inline-flex items-center gap-1 text-left hover:text-amber-700"
+                  >
+                    {expandedExerciseNotes.has(index)
+                      ? "Hide exercise notes"
+                      : "Add exercise notes (optional)"}
+                  </button>
+                  {expandedExerciseNotes.has(index) ? (
+                    <input
+                      type="text"
+                      value={row.notes}
+                      onChange={(event) =>
+                        updateExerciseRow(index, "notes", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                      placeholder="Optional notes for this exercise"
+                    />
+                  ) : null}
+                </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

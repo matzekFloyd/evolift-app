@@ -510,14 +510,6 @@ export default function SessionDetailPage() {
             <Dumbbell className="h-6 w-6 text-amber-700" />
             Workout session detail
           </h1>
-          <button
-            type="button"
-            onClick={goBack}
-            className="inline-flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
         </div>
         <div className="flex items-center gap-2">
           {!isReadOnly ? (
@@ -537,6 +529,14 @@ export default function SessionDetailPage() {
           >
             {isReadOnly ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
             {isReadOnly ? "Unlock" : "Lock"}
+          </button>
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
           </button>
         </div>
       </div>
