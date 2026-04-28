@@ -178,12 +178,12 @@ export default function LoginPage() {
             <p>Email confirmed. You can log in now.</p>
           </div>
         ) : null}
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight">
             <Dumbbell className="h-5 w-5 text-amber-700" />
             EvoLift
           </div>
-          <div className="inline-flex rounded-lg border border-amber-200 bg-amber-50 p-1">
+          <div className="inline-flex w-full rounded-lg border border-amber-200 bg-amber-50 p-1 sm:w-auto">
             <button
               type="button"
               onClick={() => {
@@ -191,7 +191,7 @@ export default function LoginPage() {
                 setMessage(null);
                 setSuccessEmail(null);
               }}
-              className={`w-24 rounded-md px-3 py-1.5 text-sm font-medium ${
+              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium sm:w-24 sm:flex-none ${
                 mode === "login"
                   ? "bg-amber-100 text-amber-900"
                   : "text-zinc-600 hover:bg-amber-100 hover:text-amber-900"
@@ -206,7 +206,7 @@ export default function LoginPage() {
                 setMessage(null);
                 setSuccessEmail(null);
               }}
-              className={`w-24 rounded-md px-3 py-1.5 text-sm font-medium ${
+              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium sm:w-24 sm:flex-none ${
                 mode === "register"
                   ? "bg-amber-100 text-amber-900"
                   : "text-zinc-600 hover:bg-amber-100 hover:text-amber-900"
@@ -267,16 +267,12 @@ export default function LoginPage() {
             </label>
           ) : null}
 
-          <div className="flex items-center justify-between gap-3">
-            {message ? (
-              <p className="text-sm text-red-600">{message}</p>
-            ) : (
-              <span />
-            )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {message ? <p className="text-sm text-red-600 sm:flex-1">{message}</p> : null}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-24 cursor-pointer rounded-md border border-black bg-black px-4 py-2 text-sm text-white shadow-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full cursor-pointer rounded-md border border-black bg-black px-4 py-2 text-sm text-white shadow-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto sm:w-24"
             >
               {mode === "login" ? "Log in" : "Register"}
             </button>
