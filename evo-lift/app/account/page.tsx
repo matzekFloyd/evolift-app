@@ -340,7 +340,7 @@ export default function AccountPage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
       <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
-        <UserRound className="h-6 w-6 text-amber-700" />
+        <UserRound className="h-6 w-6 text-sky-700" />
         User information
       </h1>
       <section className="panel p-5 text-sm">
@@ -373,7 +373,7 @@ export default function AccountPage() {
             <button
               type="submit"
               disabled={isSavingEmail}
-              className="h-10 w-full rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-60 sm:w-40"
+              className="h-10 w-full rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
             >
               Change email
             </button>
@@ -423,7 +423,7 @@ export default function AccountPage() {
             <button
               type="submit"
               disabled={isSavingPassword}
-              className="h-10 w-full rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-60 sm:w-40"
+              className="h-10 w-full rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
             >
               Change password
             </button>
@@ -507,14 +507,14 @@ export default function AccountPage() {
               type="button"
               onClick={handleClearDefaults}
               disabled={isClearingDefaults || !selectedExerciseId}
-              className="h-10 w-full rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-60 sm:w-40"
+              className="h-10 w-full rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:w-40"
             >
               {isClearingDefaults ? "Clearing..." : "Clear defaults"}
             </button>
             <button
               type="submit"
               disabled={isSavingDefaults}
-              className="h-10 w-full rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-60 sm:w-40"
+              className="h-10 w-full rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
             >
               {isSavingDefaults ? "Saving..." : "Save defaults"}
             </button>

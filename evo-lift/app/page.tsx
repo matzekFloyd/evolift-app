@@ -299,12 +299,12 @@ export default function Home() {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
       <div className="flex items-center justify-between gap-3">
         <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <ClipboardList className="h-6 w-6 text-amber-700" />
+          <ClipboardList className="h-6 w-6 text-sky-700" />
           Workout sessions
         </h1>
         <Link
           href="/sessions/new"
-          className="inline-flex h-10 items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm font-medium hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700"
+          className="inline-flex h-10 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600"
           aria-label="Add workout session"
           title="Add workout session"
         >
@@ -345,7 +345,7 @@ export default function Home() {
                   setDateTo("");
                 }}
                 disabled={!dateFrom && !dateTo}
-                className="inline-flex h-9 items-center justify-center gap-1 rounded-md border px-3 text-sm disabled:opacity-60"
+                className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
               >
                 <FilterX className="h-3.5 w-3.5" />
                 Clear filters
@@ -406,8 +406,8 @@ export default function Home() {
                       key={session.id}
                       className={`border-b last:border-b-0 ${
                         isOpening
-                          ? "cursor-progress bg-amber-100"
-                          : "cursor-pointer hover:bg-amber-50"
+                          ? "cursor-progress bg-sky-100"
+                          : "cursor-pointer hover:bg-sky-50"
                       }`}
                       onClick={() => {
                         if (openingSessionId) {
@@ -422,7 +422,7 @@ export default function Home() {
                         <span className="inline-flex items-center gap-2">
                           {session.performed_on}
                           {isOpening ? (
-                            <span className="text-xs font-medium text-amber-700">Opening...</span>
+                            <span className="text-xs font-medium text-sky-700">Opening...</span>
                           ) : null}
                         </span>
                       </td>
@@ -481,7 +481,7 @@ export default function Home() {
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="inline-flex h-9 items-center justify-center rounded-md border px-3 disabled:opacity-60"
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
                 >
                   Previous
                 </button>
@@ -489,7 +489,7 @@ export default function Home() {
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="inline-flex h-9 items-center justify-center rounded-md border px-3 disabled:opacity-60"
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
                 >
                   Next
                 </button>

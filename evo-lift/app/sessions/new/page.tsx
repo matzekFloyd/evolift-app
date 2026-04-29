@@ -542,13 +542,13 @@ export default function NewSessionPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
       <div className="flex items-center justify-between gap-3">
         <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <CalendarPlus className="h-6 w-6 text-amber-700" />
+          <CalendarPlus className="h-6 w-6 text-sky-700" />
           New workout session
         </h1>
         <button
           type="button"
           onClick={goBack}
-          className="inline-flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700"
+          className="inline-flex w-fit items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
@@ -574,7 +574,7 @@ export default function NewSessionPage() {
             <button
               type="button"
               onClick={() => setIsSessionNotesExpanded((prev) => !prev)}
-              className="inline-flex items-center gap-1 text-left hover:text-amber-700"
+              className="inline-flex items-center gap-1 text-left hover:text-sky-700"
             >
               <NotebookPen className="h-3.5 w-3.5 text-zinc-500" />
               {isSessionNotesExpanded ? "Hide notes" : "Add notes (optional)"}
@@ -613,7 +613,7 @@ export default function NewSessionPage() {
                 <button
                   type="button"
                   onClick={addExerciseRow}
-                  className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
+                    className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                 >
                   <Plus className="h-3 w-3" />
                   Add exercise
@@ -793,7 +793,7 @@ export default function NewSessionPage() {
                     type="button"
                     onClick={() => saveExerciseDefaults(index)}
                     disabled={savingDefaultsRowIndex === index || !row.exerciseId}
-                    className="inline-flex items-center gap-1 rounded-md border bg-white px-2 py-1 text-xs hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:opacity-60"
+                    className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
                   >
                     {savingDefaultsRowIndex === index ? "Saving..." : "Save as default"}
                   </button>
@@ -802,7 +802,7 @@ export default function NewSessionPage() {
                   <button
                     type="button"
                     onClick={() => toggleExerciseNotes(index)}
-                    className="inline-flex items-center gap-1 text-left hover:text-amber-700"
+                    className="inline-flex items-center gap-1 text-left hover:text-sky-700"
                   >
                     {expandedExerciseNotes.has(index)
                       ? "Hide exercise notes"
@@ -832,7 +832,7 @@ export default function NewSessionPage() {
                 type="submit"
                 disabled={isSaving}
                 onClick={() => setCreateMode("home")}
-                className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-black bg-black px-3 py-2 text-sm text-white hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:opacity-60 sm:w-44"
+                className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-44"
               >
                 <Check className="h-3.5 w-3.5" />
                 Create
@@ -841,7 +841,7 @@ export default function NewSessionPage() {
                 type="submit"
                 disabled={isSaving}
                 onClick={() => setCreateMode("log")}
-                className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:opacity-60 sm:w-44"
+                className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:w-44"
               >
                 <Play className="h-3.5 w-3.5" />
                 Create + log sets

@@ -182,10 +182,10 @@ export default function LoginPage() {
         ) : null}
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <Dumbbell className="h-5 w-5 text-amber-700" />
+            <Dumbbell className="h-5 w-5 text-sky-700" />
             EvoLift
           </div>
-          <div className="inline-flex w-full rounded-lg border border-amber-200 bg-amber-50 p-1 sm:w-auto">
+          <div className="inline-flex w-full rounded-lg border border-zinc-300 bg-zinc-50 p-1 sm:w-auto">
             <button
               type="button"
               onClick={() => {
@@ -195,8 +195,8 @@ export default function LoginPage() {
               }}
               className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium sm:w-24 sm:flex-none ${
                 mode === "login"
-                  ? "bg-amber-100 text-amber-900"
-                  : "text-zinc-600 hover:bg-amber-100 hover:text-amber-900"
+                  ? "bg-sky-100 text-sky-900"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
               }`}
             >
               Log in
@@ -210,8 +210,8 @@ export default function LoginPage() {
               }}
               className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium sm:w-24 sm:flex-none ${
                 mode === "register"
-                  ? "bg-amber-100 text-amber-900"
-                  : "text-zinc-600 hover:bg-amber-100 hover:text-amber-900"
+                  ? "bg-sky-100 text-sky-900"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
               }`}
             >
               Register
@@ -274,7 +274,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full cursor-pointer rounded-md border border-black bg-black px-4 py-2 text-sm text-white shadow-sm hover:border-amber-500 hover:bg-amber-100 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto sm:w-24"
+              className="w-full cursor-pointer rounded-md border border-sky-700 bg-sky-700 px-4 py-2 text-sm text-white shadow-sm hover:border-sky-600 hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto sm:w-24"
             >
               {mode === "login" ? "Log in" : "Register"}
             </button>
@@ -284,7 +284,7 @@ export default function LoginPage() {
 
       {successEmail ? (
         <section className="panel p-4 text-sm">
-          <h2 className="inline-flex items-center gap-1 font-medium text-amber-900">
+          <h2 className="inline-flex items-center gap-1 font-medium text-sky-900">
             <CircleCheck className="h-4 w-4" />
             Check your inbox
           </h2>

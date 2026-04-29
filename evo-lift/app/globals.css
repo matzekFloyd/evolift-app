@@ -3,9 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --accent: #f59e0b;
-  --accent-strong: #d97706;
-  --accent-soft: #fef3c7;
+  --accent: #0284c7;
+  --accent-strong: #0369a1;
+  --accent-soft: #f4f4f5;
 }
 
 @theme inline {
@@ -69,10 +69,10 @@ select:hover {
   background-color: var(--accent-soft);
 }
 
-button.bg-black:not(:disabled):hover {
+button.bg-sky-700:not(:disabled):hover {
   border-color: var(--accent);
-  background-color: var(--accent-soft);
-  color: var(--accent-strong);
+  background-color: #0369a1;
+  color: #ffffff;
 }
 
 button:disabled {

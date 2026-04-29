@@ -59,10 +59,10 @@ export function HeaderActions() {
     <header className="border-b bg-white/90">
       <nav className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
         <Link
-          className="inline-flex items-center gap-2 rounded px-1 py-1 text-sm font-semibold tracking-tight text-zinc-900 hover:text-amber-800"
+          className="inline-flex items-center gap-2 rounded px-1 py-1 text-sm font-semibold tracking-tight text-zinc-900 hover:text-sky-800"
           href="/"
         >
-          <Dumbbell className="h-4 w-4 text-amber-700" />
+          <Dumbbell className="h-4 w-4 text-sky-700" />
           EvoLift
         </Link>
         <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-4">
@@ -70,8 +70,8 @@ export function HeaderActions() {
             href="/"
             className={`inline-flex items-center rounded-md border p-2 text-xs font-medium sm:text-sm ${
               pathname === "/"
-                ? "border-zinc-900 bg-zinc-900 text-white"
-                : "text-zinc-700 hover:border-amber-500 hover:bg-amber-100 hover:text-amber-900"
+                ? "border-sky-700 bg-sky-700 text-white"
+                : "text-zinc-700 hover:border-sky-300 hover:bg-zinc-100 hover:text-zinc-900"
             }`}
             title="Home"
             aria-label="Home"
@@ -82,8 +82,8 @@ export function HeaderActions() {
             href="/account"
             className={`inline-flex items-center rounded-md border p-2 text-xs font-medium sm:text-sm ${
               pathname === "/account"
-                ? "border-zinc-900 bg-zinc-900 text-white"
-                : "text-zinc-700 hover:border-amber-500 hover:bg-amber-100 hover:text-amber-900"
+                ? "border-sky-700 bg-sky-700 text-white"
+                : "text-zinc-700 hover:border-sky-300 hover:bg-zinc-100 hover:text-zinc-900"
             }`}
             title={`Logged in as ${userEmail ?? "unknown user"}`}
             aria-label="Account"
@@ -93,7 +93,7 @@ export function HeaderActions() {
           <button
             type="button"
             onClick={handleAuthClick}
-            className="inline-flex items-center rounded-md border p-2 text-xs font-medium text-zinc-700 hover:border-amber-500 hover:bg-amber-100 hover:text-amber-900 sm:text-sm"
+            className="inline-flex items-center rounded-md border border-zinc-300 bg-zinc-50 p-2 text-xs font-medium text-zinc-700 hover:border-sky-300 hover:bg-zinc-100 hover:text-zinc-900 sm:text-sm"
             aria-label="Log out"
             title="Log out"
           >
