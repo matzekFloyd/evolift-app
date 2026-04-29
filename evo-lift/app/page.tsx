@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ClipboardList, FilterX, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ActionButton } from "@/app/components/action-button";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
@@ -338,18 +339,21 @@ export default function Home() {
                   />
                 </label>
               </div>
-              <button
+              <ActionButton
                 type="button"
                 onClick={() => {
                   setDateFrom("");
                   setDateTo("");
                 }}
                 disabled={!dateFrom && !dateTo}
-                className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
+                variant="secondary"
+                size="sm"
+                className="text-sm font-normal"
+                iconColor="zinc"
               >
                 <FilterX className="h-3.5 w-3.5 text-zinc-500" />
                 Clear filters
-              </button>
+              </ActionButton>
             </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-full text-left text-sm md:min-w-[520px]">
@@ -477,22 +481,26 @@ export default function Home() {
                 Page {currentPage} of {totalPages}
               </p>
               <div className="flex items-center gap-2">
-                <button
+                <ActionButton
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
+                  variant="secondary"
+                  size="sm"
+                  className="font-normal"
                 >
                   Previous
-                </button>
-                <button
+                </ActionButton>
+                <ActionButton
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
+                  variant="primary"
+                  size="sm"
+                  className="font-normal"
                 >
                   Next
-                </button>
+                </ActionButton>
               </div>
             </div>
           ) : null}

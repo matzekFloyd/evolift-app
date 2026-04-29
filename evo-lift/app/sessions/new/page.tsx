@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { ActionButton } from "@/app/components/action-button";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import type { Database } from "@/lib/supabase/database.types";
 import { toExerciseBadge } from "@/lib/exercise-badge";
@@ -579,16 +580,12 @@ export default function NewSessionPage() {
           <CalendarPlus className="h-6 w-6 text-sky-700" />
           New workout session
         </h1>
-        <button
-          type="button"
-          onClick={goBack}
-          className="inline-flex w-fit items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-        >
+        <ActionButton type="button" onClick={goBack} variant="secondary" size="md">
           <ArrowLeft className="h-4 w-4 text-sky-700" />
           Back
-        </button>
+        </ActionButton>
       </div>
-      <section className={isCompactView ? "text-sm" : "panel p-5 text-sm"}>
+      <section className="text-sm">
         <form id="new-session-form" onSubmit={handleCreateSession} className="space-y-4">
           <label className="block text-sm font-medium">
             <span className="inline-flex items-center gap-1">
@@ -684,22 +681,27 @@ export default function NewSessionPage() {
                 </span>
               ) : null}
               <div className={`flex items-center gap-2 ${isCompactView ? "hidden" : ""}`}>
-                <button
+                <ActionButton
                   type="button"
                   onClick={clearDraft}
-                  className="inline-flex items-center gap-1 text-xs underline"
+                  variant="secondary"
+                  size="sm"
+                  className="px-2 py-1 text-xs font-normal"
+                  iconColor="amber"
                 >
                   <Eraser className="h-3 w-3 text-amber-600" />
                   Clear draft
-                </button>
-                <button
+                </ActionButton>
+                <ActionButton
                   type="button"
                   onClick={addExerciseRow}
-                    className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                  variant="primary"
+                  size="sm"
+                  className="px-2 py-1 text-xs font-normal"
                 >
-                  <Plus className="h-3 w-3 text-sky-700" />
+                  <Plus className="h-3 w-3 text-white" />
                   Add exercise
-                </button>
+                </ActionButton>
               </div>
             </div>
             {isCompactView && exerciseRows.length > 0 ? (
@@ -733,9 +735,7 @@ export default function NewSessionPage() {
                 className={
                   isCompactView
                     ? "rounded-md border border-zinc-200 bg-zinc-50/70 p-3"
-                    : `panel panel-nested p-3 ${
-                        index % 2 === 0 ? "panel-nested-odd" : "panel-nested-even"
-                      }`
+                    : "panel panel-nested border-zinc-200 bg-zinc-50/80 p-5 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
                 }
               >
                 {/** Optional per-exercise notes are collapsed by default for less visual noise. */}
@@ -823,13 +823,16 @@ export default function NewSessionPage() {
                         </button>
                       ) : null
                     ) : exerciseRows.length > 1 ? (
-                      <button
+                      <ActionButton
                         type="button"
                         onClick={() => removeExerciseRow(index)}
-                        className="inline-flex items-center text-xs underline"
+                        variant="secondary"
+                        size="sm"
+                        className="h-8 w-24 px-2 py-1 text-xs font-normal"
+                        iconColor="zinc"
                       >
                         Remove
-                      </button>
+                      </ActionButton>
                     ) : null}
                   </div>
                 </div>
@@ -1094,24 +1097,30 @@ export default function NewSessionPage() {
 
           <div className={`flex items-center justify-end gap-3 ${isCompactView ? "hidden" : ""}`}>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
-              <button
+              <ActionButton
                 type="submit"
                 disabled={isSaving}
                 onClick={() => setCreateMode("home")}
-                className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-44"
+                variant="secondary"
+                size="md"
+                fullWidth
+                className="sm:w-44"
               >
-                <Check className="h-3.5 w-3.5 text-white" />
+                <Check className="h-3.5 w-3.5 text-sky-700" />
                 Create
-              </button>
-              <button
+              </ActionButton>
+              <ActionButton
                 type="submit"
                 disabled={isSaving}
                 onClick={() => setCreateMode("log")}
-                className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:w-44"
+                variant="primary"
+                size="md"
+                fullWidth
+                className="sm:w-44"
               >
-                <Play className="h-3.5 w-3.5 text-sky-700" />
+                <Play className="h-3.5 w-3.5 text-white" />
                 Create + log sets
-              </button>
+              </ActionButton>
             </div>
           </div>
         </form>
