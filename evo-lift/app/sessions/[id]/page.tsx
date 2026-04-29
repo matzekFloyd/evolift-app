@@ -17,6 +17,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
+import { CompactStickyBar } from "@/app/components/compact-sticky-bar";
+import { CompactRowActions } from "@/app/components/compact-row-actions";
+import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
 type SessionRow = Database["public"]["Tables"]["workout_sessions"]["Row"];
@@ -769,7 +772,7 @@ export default function SessionDetailPage() {
   return (
     <main
       className={`mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16 ${
-        isCompactView ? "pt-3 pb-44 sm:pb-16" : ""
+        isCompactView ? "pt-3 pb-52 sm:pb-16" : ""
       }`}
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1114,25 +1117,15 @@ export default function SessionDetailPage() {
                         Warmup
                       </label>
                       <div className="mt-3 flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => saveEdit(set.id)}
-                          disabled={isSavingSet}
-                          className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <CompactRowActions
+                          isEditing
+                          onEdit={() => {}}
+                          onSave={() => saveEdit(set.id)}
+                          onCancel={() => {
                             setEditingSetId(null);
                             setEditDraft(emptyDraft);
                           }}
-                          disabled={isSavingSet}
-                          className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-                        >
-                          Cancel
-                        </button>
+                        />
                       </div>
                     </div>
                   ) : (
@@ -1144,29 +1137,21 @@ export default function SessionDetailPage() {
                               <span className="font-medium text-zinc-900">Set {set.set_number}</span>
                               <span className="text-zinc-500"> - </span>
                               <span>Reps {set.reps}</span>
-                              <span className="text-zinc-500"> - </span>
+                              <span className="text-zinc-500">, </span>
                               <span>{set.weight_kg ?? "-"} kg</span>
-                              <span className="text-zinc-500"> - </span>
+                              <span className="text-zinc-500">, </span>
                               <span>{set.is_warmup ? "Warmup" : "Working"}</span>
                             </div>
                             {!isReadOnly ? (
-                              <div className="flex shrink-0 items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => startEdit(set)}
-                                  disabled={isSavingSet}
-                                  className="w-24 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteSet(set.id)}
-                                  disabled={isSavingSet}
-                                  className="w-24 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-                                >
-                                  Delete
-                                </button>
+                              <div className="flex shrink-0 items-center">
+                                <CompactRowActions
+                                  isEditing={false}
+                                  onEdit={() => startEdit(set)}
+                                  onSave={() => {}}
+                                  onCancel={() => {}}
+                                  onSecondary={() => deleteSet(set.id)}
+                                  secondaryLabel="Delete"
+                                />
                               </div>
                             ) : null}
                           </div>
@@ -1214,7 +1199,7 @@ export default function SessionDetailPage() {
                 {!isReadOnly ? (
                   <div className="rounded-md border border-zinc-200 bg-zinc-50/80 p-3 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
                     <p className="inline-flex items-center gap-1 text-sm text-zinc-700">
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-3 w-3 text-sky-700" />
                       New set
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -1472,7 +1457,7 @@ export default function SessionDetailPage() {
                       <tr>
                         <td className="px-2 py-2">
                           <span className="inline-flex items-center gap-1 text-xs text-zinc-600">
-                            <Plus className="h-3 w-3" />
+                            <Plus className="h-3 w-3 text-sky-700" />
                             New
                           </span>
                         </td>
@@ -1554,9 +1539,9 @@ export default function SessionDetailPage() {
                   aria-label={isAddExerciseExpanded ? "Collapse add exercise section" : "Expand add exercise section"}
                 >
                   {isAddExerciseExpanded ? (
-                    <ChevronUp className="h-3.5 w-3.5" />
+                    <ChevronUp className="h-3.5 w-3.5 text-zinc-500" />
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <ChevronDown className="h-3.5 w-3.5 text-zinc-500" />
                   )}
                 </button>
                 <button
@@ -1661,21 +1646,17 @@ export default function SessionDetailPage() {
                         placeholder="e.g. 60"
                       />
                     </label>
-                    <label className="block text-sm font-medium sm:col-span-2">
-                      Notes (optional)
-                      <textarea
+                    <div className="sm:col-span-2">
+                      <NotesTextareaField
+                        label="Notes (optional)"
                         value={addExerciseDraft.notes}
-                        onChange={(event) =>
-                          setAddExerciseDraft((prev) => ({ ...prev, notes: event.target.value }))
+                        onChange={(nextValue) =>
+                          setAddExerciseDraft((prev) => ({ ...prev, notes: nextValue }))
                         }
-                        className="mt-1 h-24 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                        maxLength={maxExerciseNotesLength}
                         placeholder="Optional exercise notes"
+                        maxLength={maxExerciseNotesLength}
                       />
-                      <p className="mt-1 text-xs text-zinc-500">
-                        {addExerciseDraft.notes.length}/{maxExerciseNotesLength}
-                      </p>
-                    </label>
+                    </div>
                   </div>
                   <div className="mt-4 flex justify-end">
                     <button
@@ -1696,13 +1677,13 @@ export default function SessionDetailPage() {
       </section>
 
       {isCompactView && !isReadOnly && activeSessionExercise ? (
-        <div className="fixed inset-x-0 bottom-20 z-40 p-3 md:hidden">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-1">
-            <div className="grid grid-cols-2 gap-2">
+        <CompactStickyBar
+          actions={
+            <>
               <button
                 type="button"
                 onClick={() => startTargetsEdit(activeSessionExercise, "sheet")}
-                className="inline-flex h-11 w-full items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100"
               >
                 Set targets
               </button>
@@ -1710,14 +1691,21 @@ export default function SessionDetailPage() {
                 type="button"
                 onClick={() => handleAddSet(activeSessionExercise.id)}
                 disabled={isSavingSet}
-                className="inline-flex h-11 w-full items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.14)] hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.14)] hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
               >
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 {isSavingSet ? "Adding..." : "Add set"}
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+          progressLabel={`${activeExerciseIndex + 1}/${sessionExercises.length}`}
+          onPrevious={() => setActiveExerciseIndex((prev) => Math.max(0, prev - 1))}
+          onNext={() =>
+            setActiveExerciseIndex((prev) => Math.min(sessionExercises.length - 1, prev + 1))
+          }
+          isPreviousDisabled={activeExerciseIndex === 0}
+          isNextDisabled={activeExerciseIndex === sessionExercises.length - 1}
+        />
       ) : null}
       {!isReadOnly && isTargetsSheetOpen ? (
         <div className="fixed inset-0 z-50">
@@ -1911,21 +1899,15 @@ export default function SessionDetailPage() {
                     />
                   </label>
                 </div>
-                <label className="block text-sm font-medium">
-                  Notes (optional)
-                  <textarea
-                    value={addExerciseDraft.notes}
-                    onChange={(event) =>
-                      setAddExerciseDraft((prev) => ({ ...prev, notes: event.target.value }))
-                    }
-                    className="mt-1 h-24 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                    maxLength={maxExerciseNotesLength}
-                    placeholder="Optional exercise notes"
-                  />
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {addExerciseDraft.notes.length}/{maxExerciseNotesLength}
-                  </p>
-                </label>
+                <NotesTextareaField
+                  label="Notes (optional)"
+                  value={addExerciseDraft.notes}
+                  onChange={(nextValue) =>
+                    setAddExerciseDraft((prev) => ({ ...prev, notes: nextValue }))
+                  }
+                  placeholder="Optional exercise notes"
+                  maxLength={maxExerciseNotesLength}
+                />
                 <div className="mt-1 flex gap-2">
                   <button
                     type="button"
@@ -1940,39 +1922,12 @@ export default function SessionDetailPage() {
                     disabled={isAddingExercise}
                     className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-3.5 w-3.5 text-white" />
                     {isAddingExercise ? "Adding..." : "Add"}
                   </button>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      ) : null}
-      {isCompactView && sessionExercises.length > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 p-3 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
-          <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveExerciseIndex((prev) => Math.max(0, prev - 1))}
-              disabled={activeExerciseIndex === 0}
-              className="inline-flex h-11 min-w-[96px] items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
-            >
-              Previous
-            </button>
-            <span className="text-xs text-zinc-600">
-              {activeExerciseIndex + 1}/{sessionExercises.length}
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                setActiveExerciseIndex((prev) => Math.min(sessionExercises.length - 1, prev + 1))
-              }
-              disabled={activeExerciseIndex === sessionExercises.length - 1}
-              className="inline-flex h-11 min-w-[96px] items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
-            >
-              Next
-            </button>
           </div>
         </div>
       ) : null}

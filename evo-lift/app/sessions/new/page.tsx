@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import type { Database } from "@/lib/supabase/database.types";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
@@ -78,6 +79,8 @@ export default function NewSessionPage() {
   const [createMode, setCreateMode] = useState<"home" | "log">("home");
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"error" | "success">("error");
+  const [isSmallPhone, setIsSmallPhone] = useState(false);
+  const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
   const maxNotesLength = 500;
 
   const trimmedNotes = useMemo(() => notes.trim(), [notes]);
@@ -94,6 +97,10 @@ export default function NewSessionPage() {
   function showSuccess(messageText: string) {
     setMessageTone("success");
     setMessage(messageText);
+  }
+
+  function clearMessage() {
+    setMessage(null);
   }
 
   function resetDraftState() {
@@ -236,6 +243,21 @@ export default function NewSessionPage() {
 
     window.localStorage.setItem(getDraftStorageKey(userId), JSON.stringify(draft));
   }, [exerciseRows, isChecking, notes, performedOn, userId]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const apply = () => setIsSmallPhone(mediaQuery.matches);
+    apply();
+    const onChange = () => apply();
+    mediaQuery.addEventListener("change", onChange);
+    return () => mediaQuery.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (activeExerciseIndex >= exerciseRows.length) {
+      setActiveExerciseIndex(Math.max(0, exerciseRows.length - 1));
+    }
+  }, [activeExerciseIndex, exerciseRows.length]);
 
   async function handleCreateSession(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -523,6 +545,7 @@ export default function NewSessionPage() {
   }
 
   function goBack() {
+    clearMessage();
     if (window.history.length > 1) {
       router.back();
       return;
@@ -538,8 +561,19 @@ export default function NewSessionPage() {
     );
   }
 
+  const isCompactView = isSmallPhone;
+  const visibleExerciseRows = isCompactView
+    ? exerciseRows
+        .map((row, index) => ({ row, index }))
+        .filter(({ index }) => index === activeExerciseIndex)
+    : exerciseRows.map((row, index) => ({ row, index }));
+
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
+    <main
+      className={`mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16 ${
+        isCompactView ? "pb-36" : ""
+      }`}
+    >
       <div className="flex items-center justify-between gap-3">
         <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
           <CalendarPlus className="h-6 w-6 text-sky-700" />
@@ -550,12 +584,12 @@ export default function NewSessionPage() {
           onClick={goBack}
           className="inline-flex w-fit items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 text-sky-700" />
           Back
         </button>
       </div>
-      <section className="panel p-5 text-sm">
-        <form onSubmit={handleCreateSession} className="space-y-4">
+      <section className={isCompactView ? "text-sm" : "panel p-5 text-sm"}>
+        <form id="new-session-form" onSubmit={handleCreateSession} className="space-y-4">
           <label className="block text-sm font-medium">
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="h-3.5 w-3.5 text-zinc-500" />
@@ -595,19 +629,67 @@ export default function NewSessionPage() {
             ) : null}
           </div>
 
+          {message ? (
+            <section
+              className={`rounded-md border px-3 py-2 text-sm shadow-sm ${
+                messageTone === "error"
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p>{message}</p>
+                <button
+                  type="button"
+                  onClick={clearMessage}
+                  aria-label="Dismiss message"
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-sm leading-none opacity-70 hover:opacity-100"
+                >
+                  ×
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {isCompactView ? (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={clearDraft}
+                className="inline-flex h-10 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+              >
+                <Eraser className="h-3.5 w-3.5 text-amber-600" />
+                Clear draft
+              </button>
+              <button
+                type="button"
+                onClick={addExerciseRow}
+                className="inline-flex h-10 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+              >
+                <Plus className="h-3.5 w-3.5 text-sky-700" />
+                Add exercise
+              </button>
+            </div>
+          ) : null}
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="inline-flex items-center gap-1 text-sm font-medium">
                 <Dumbbell className="h-3.5 w-3.5 text-zinc-500" />
                 Exercises
               </h2>
-              <div className="flex items-center gap-2">
+              {isCompactView && exerciseRows.length > 0 ? (
+                <span className="text-xs text-zinc-500">
+                  {activeExerciseIndex + 1}/{exerciseRows.length}
+                </span>
+              ) : null}
+              <div className={`flex items-center gap-2 ${isCompactView ? "hidden" : ""}`}>
                 <button
                   type="button"
                   onClick={clearDraft}
                   className="inline-flex items-center gap-1 text-xs underline"
                 >
-                  <Eraser className="h-3 w-3" />
+                  <Eraser className="h-3 w-3 text-amber-600" />
                   Clear draft
                 </button>
                 <button
@@ -615,74 +697,132 @@ export default function NewSessionPage() {
                   onClick={addExerciseRow}
                     className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-3 w-3 text-sky-700" />
                   Add exercise
                 </button>
               </div>
             </div>
-            {exerciseRows.map((row, index) => (
+            {isCompactView && exerciseRows.length > 0 ? (
+              <div className="flex items-center justify-between rounded-md border border-zinc-200 bg-zinc-50 p-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveExerciseIndex((prev) => Math.max(0, prev - 1))}
+                  disabled={activeExerciseIndex === 0}
+                  className="inline-flex h-9 min-w-[88px] items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-xs font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-zinc-600">
+                  {activeExerciseIndex + 1}/{exerciseRows.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveExerciseIndex((prev) => Math.min(exerciseRows.length - 1, prev + 1))
+                  }
+                  disabled={activeExerciseIndex === exerciseRows.length - 1}
+                  className="inline-flex h-9 min-w-[88px] items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-xs font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
+                >
+                  Next
+                </button>
+              </div>
+            ) : null}
+            {visibleExerciseRows.map(({ row, index }) => (
               <div
                 key={index}
-                className={`panel panel-nested p-3 ${
-                  index % 2 === 0 ? "panel-nested-odd" : "panel-nested-even"
-                }`}
+                className={
+                  isCompactView
+                    ? "rounded-md border border-zinc-200 bg-zinc-50/70 p-3"
+                    : `panel panel-nested p-3 ${
+                        index % 2 === 0 ? "panel-nested-odd" : "panel-nested-even"
+                      }`
+                }
               >
                 {/** Optional per-exercise notes are collapsed by default for less visual noise. */}
                 <div className="mb-2 mt-1 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => toggleExerciseCollapsed(index)}
-                    className="inline-flex min-h-6 items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-zinc-100 hover:text-zinc-800"
-                    aria-label={
-                      collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"
-                    }
-                    title={collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"}
-                  >
-                    <span className="inline-flex h-6 w-6 items-center justify-center">
-                      {collapsedExercises.has(index) ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronUp className="h-4 w-4" />
-                      )}
-                    </span>
-                    <span className="inline-flex h-6 items-center leading-none text-sm font-medium text-zinc-600">
+                  {isCompactView ? (
+                    <div className="inline-flex h-6 items-center leading-none text-sm font-medium text-zinc-600">
                       {(() => {
-                        const baseTitle = `Exercise #${index + 1}`;
-                        const label = row.exerciseId
-                          ? (exerciseOptions.find((option) => option.id === row.exerciseId)?.label ??
-                            row.exerciseId)
+                        const selectedOption = row.exerciseId
+                          ? exerciseOptions.find((option) => option.id === row.exerciseId)
                           : null;
-                        const details = [
+                        const selectedBadge = selectedOption
+                          ? toExerciseBadge(selectedOption.slug)
+                          : null;
+                        const baseTitle = selectedBadge ?? `Exercise ${index + 1}`;
+                        const targetDetails = [
                           row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
                           row.targetSets ? `${row.targetSets} sets` : null,
                           row.targetReps ? `${row.targetReps} reps` : null,
-                          row.targetWeightKg ? `target ${row.targetWeightKg} kg` : null,
+                          row.targetWeightKg ? `weight ${row.targetWeightKg} kg` : null,
                         ]
                           .filter(Boolean)
                           .join(", ");
-
-                        const mobileTitle = [baseTitle, label].filter(Boolean).join(" - ");
-
-                        let desktopTitle = baseTitle;
-                        if (label && details) {
-                          desktopTitle = [baseTitle, `${label} (${details})`].join(" - ");
-                        } else if (label) {
-                          desktopTitle = [baseTitle, label].join(" - ");
-                        } else if (details) {
-                          desktopTitle = [baseTitle, details].join(" - ");
-                        }
-
-                        return (
-                          <>
-                            <span className="md:hidden">{mobileTitle}</span>
-                            <span className="hidden md:inline">{desktopTitle}</span>
-                          </>
-                        );
+                        const mobileTitle = targetDetails
+                          ? `${baseTitle} - ${targetDetails}`
+                          : baseTitle;
+                        return <span>{mobileTitle}</span>;
                       })()}
-                    </span>
-                  </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => toggleExerciseCollapsed(index)}
+                      className="inline-flex min-h-6 items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-zinc-100 hover:text-zinc-800"
+                      aria-label={
+                        collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"
+                      }
+                      title={collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"}
+                    >
+                      <span className="inline-flex h-6 w-6 items-center justify-center">
+                        {collapsedExercises.has(index) ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4" />
+                        )}
+                      </span>
+                      <span className="inline-flex h-6 items-center leading-none text-sm font-medium text-zinc-600">
+                        {(() => {
+                          const baseTitle = `Exercise #${index + 1}`;
+                          const label = row.exerciseId
+                            ? (exerciseOptions.find((option) => option.id === row.exerciseId)?.label ??
+                              row.exerciseId)
+                            : null;
+                          const details = [
+                            row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
+                            row.targetSets ? `${row.targetSets} sets` : null,
+                            row.targetReps ? `${row.targetReps} reps` : null,
+                            row.targetWeightKg ? `weight ${row.targetWeightKg} kg` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(", ");
+
+                          let desktopTitle = baseTitle;
+                          if (label && details) {
+                            desktopTitle = [baseTitle, `${label} (${details})`].join(" - ");
+                          } else if (label) {
+                            desktopTitle = [baseTitle, label].join(" - ");
+                          } else if (details) {
+                            desktopTitle = [baseTitle, details].join(" - ");
+                          }
+
+                          return <span>{desktopTitle}</span>;
+                        })()}
+                      </span>
+                    </button>
+                  )}
                   <div className="inline-flex min-h-6 items-center gap-2">
-                    {exerciseRows.length > 1 ? (
+                    {isCompactView ? (
+                      exerciseRows.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => removeExerciseRow(index)}
+                          className="inline-flex h-8 w-24 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                        >
+                          Remove
+                        </button>
+                      ) : null
+                    ) : exerciseRows.length > 1 ? (
                       <button
                         type="button"
                         onClick={() => removeExerciseRow(index)}
@@ -693,7 +833,134 @@ export default function NewSessionPage() {
                     ) : null}
                   </div>
                 </div>
-                {collapsedExercises.has(index) ? null : (
+                {isCompactView ? (
+                  <>
+                <label className="mt-1 block text-xs font-medium">
+                  <span className="inline-flex items-center gap-1">
+                    <ListChecks className="h-3 w-3 text-zinc-500" />
+                    Exercise
+                  </span>
+                  <select
+                    required
+                    value={row.exerciseId}
+                    onChange={(event) => handleExerciseSelect(index, event.target.value)}
+                    className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                  >
+                    <option value="">Select exercise</option>
+                    {exerciseOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label} ({toExerciseBadge(option.slug)})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <label className="block text-xs font-medium">
+                    Base weight (kg)
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.5"
+                      value={row.baseWeightKg}
+                      onChange={(event) =>
+                        updateExerciseRow(index, "baseWeightKg", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                      placeholder="e.g. 20"
+                    />
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {[20, 15, 10, 0].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() =>
+                            updateExerciseRow(
+                              index,
+                              "baseWeightKg",
+                              value === 0 ? "" : String(value),
+                            )
+                          }
+                          className="rounded border bg-white px-2 py-0.5 text-[11px]"
+                        >
+                          +{value}
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+                  <label className="block text-xs font-medium">
+                    Target sets
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.targetSets}
+                      onChange={(event) =>
+                        updateExerciseRow(index, "targetSets", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                      placeholder="e.g. 3"
+                    />
+                  </label>
+                  <label className="block text-xs font-medium">
+                    Target reps
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.targetReps}
+                      onChange={(event) =>
+                        updateExerciseRow(index, "targetReps", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                      placeholder="e.g. 8"
+                    />
+                  </label>
+                  <label className="block text-xs font-medium">
+                    Target weight (kg)
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.5"
+                      value={row.targetWeightKg}
+                      onChange={(event) =>
+                        updateExerciseRow(index, "targetWeightKg", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                      placeholder="e.g. 60"
+                    />
+                  </label>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => saveExerciseDefaults(index)}
+                    disabled={savingDefaultsRowIndex === index || !row.exerciseId}
+                    className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
+                  >
+                    {savingDefaultsRowIndex === index ? "Saving..." : "Save targets as default"}
+                  </button>
+                </div>
+                <div className="mt-3 block text-sm font-medium">
+                  <button
+                    type="button"
+                    onClick={() => toggleExerciseNotes(index)}
+                    className="inline-flex items-center gap-1 text-left hover:text-sky-700"
+                  >
+                    <NotebookPen className="h-3.5 w-3.5 text-zinc-500" />
+                    {expandedExerciseNotes.has(index)
+                      ? "Hide exercise notes"
+                      : "Add exercise notes (optional)"}
+                  </button>
+                  {expandedExerciseNotes.has(index) ? (
+                    <NotesTextareaField
+                      value={row.notes}
+                      onChange={(nextValue) => updateExerciseRow(index, "notes", nextValue)}
+                      placeholder="Optional notes for this exercise"
+                      maxLength={maxNotesLength}
+                      heightClassName="h-20"
+                    />
+                  ) : null}
+                </div>
+                  </>
+                ) : collapsedExercises.has(index) ? null : (
                   <>
                 <label className="mt-2 block text-sm font-medium">
                   <span className="inline-flex items-center gap-1">
@@ -795,7 +1062,7 @@ export default function NewSessionPage() {
                     disabled={savingDefaultsRowIndex === index || !row.exerciseId}
                     className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
                   >
-                    {savingDefaultsRowIndex === index ? "Saving..." : "Save as default"}
+                    {savingDefaultsRowIndex === index ? "Saving..." : "Save targets as default"}
                   </button>
                 </div>
                 <div className="mt-3 block text-sm font-medium">
@@ -804,19 +1071,18 @@ export default function NewSessionPage() {
                     onClick={() => toggleExerciseNotes(index)}
                     className="inline-flex items-center gap-1 text-left hover:text-sky-700"
                   >
+                    <NotebookPen className="h-3.5 w-3.5 text-zinc-500" />
                     {expandedExerciseNotes.has(index)
                       ? "Hide exercise notes"
                       : "Add exercise notes (optional)"}
                   </button>
                   {expandedExerciseNotes.has(index) ? (
-                    <input
-                      type="text"
+                    <NotesTextareaField
                       value={row.notes}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "notes", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      onChange={(nextValue) => updateExerciseRow(index, "notes", nextValue)}
                       placeholder="Optional notes for this exercise"
+                      maxLength={maxNotesLength}
+                      heightClassName="h-20"
                     />
                   ) : null}
                 </div>
@@ -826,7 +1092,7 @@ export default function NewSessionPage() {
             ))}
           </div>
 
-          <div className="flex items-center justify-end gap-3">
+          <div className={`flex items-center justify-end gap-3 ${isCompactView ? "hidden" : ""}`}>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
               <button
                 type="submit"
@@ -834,7 +1100,7 @@ export default function NewSessionPage() {
                 onClick={() => setCreateMode("home")}
                 className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-44"
               >
-                <Check className="h-3.5 w-3.5" />
+                <Check className="h-3.5 w-3.5 text-white" />
                 Create
               </button>
               <button
@@ -843,21 +1109,38 @@ export default function NewSessionPage() {
                 onClick={() => setCreateMode("log")}
                 className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:w-44"
               >
-                <Play className="h-3.5 w-3.5" />
+                <Play className="h-3.5 w-3.5 text-sky-700" />
                 Create + log sets
               </button>
             </div>
           </div>
         </form>
       </section>
-      {message ? (
-        <section
-          className={`panel p-4 text-sm ${
-            messageTone === "error" ? "text-red-600" : "text-emerald-700"
-          }`}
-        >
-          {message}
-        </section>
+      {isCompactView ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 p-3 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
+          <div className="mx-auto flex w-full max-w-5xl items-center gap-2">
+            <button
+              type="submit"
+              form="new-session-form"
+              onClick={() => setCreateMode("home")}
+              disabled={isSaving}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
+            >
+              <Check className="h-3.5 w-3.5 text-sky-700" />
+              Create
+            </button>
+            <button
+              type="submit"
+              form="new-session-form"
+              onClick={() => setCreateMode("log")}
+              disabled={isSaving}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
+            >
+              <Play className="h-3.5 w-3.5 text-white" />
+              Create + log sets
+            </button>
+          </div>
+        </div>
       ) : null}
     </main>
   );

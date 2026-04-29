@@ -308,7 +308,7 @@ export default function Home() {
           aria-label="Add workout session"
           title="Add workout session"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-3.5 w-3.5 text-white" />
           <span className="hidden sm:inline">Add workout session</span>
         </Link>
       </div>
@@ -347,7 +347,7 @@ export default function Home() {
                 disabled={!dateFrom && !dateTo}
                 className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
               >
-                <FilterX className="h-3.5 w-3.5" />
+                <FilterX className="h-3.5 w-3.5 text-zinc-500" />
                 Clear filters
               </button>
             </div>
