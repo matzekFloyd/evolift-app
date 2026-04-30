@@ -25,9 +25,9 @@ function getIntensityClass(sets: number, workouts: number): string {
   if (sets <= 0) {
     return workouts > 0 ? "bg-zinc-400" : "bg-zinc-100";
   }
-  if (sets <= 6) return "bg-sky-200";
-  if (sets <= 10) return "bg-sky-300";
-  if (sets <= 20) return "bg-sky-400";
+  if (sets <= 17) return "bg-sky-200";
+  if (sets <= 24) return "bg-sky-300";
+  if (sets <= 35) return "bg-sky-400";
   return "bg-sky-500";
 }
 
@@ -235,19 +235,19 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-3 w-3 rounded-sm bg-sky-200" />
-            1-6
+            1-17
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-3 w-3 rounded-sm bg-sky-300" />
-            7-10
+            18-24
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-3 w-3 rounded-sm bg-sky-400" />
-            11-20
+            25-34
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-3 w-3 rounded-sm bg-sky-500" />
-            20+
+            35+
           </span>
         </div>
       </div>
