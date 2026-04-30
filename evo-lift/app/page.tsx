@@ -5,6 +5,7 @@ import { ClipboardList, FilterX, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/app/components/action-button";
+import { PageShell } from "@/app/components/page-shell";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
@@ -290,14 +291,14 @@ export default function Home() {
 
   if (isChecking) {
     return (
-      <main className="mx-auto flex w-full max-w-5xl flex-1 items-center justify-center px-4 py-12 sm:px-6 sm:py-16">
+      <PageShell className="items-center justify-center">
         <p className="text-sm text-zinc-600">Checking session...</p>
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
+    <PageShell>
       <div className="flex items-center justify-between gap-3">
         <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
           <ClipboardList className="h-6 w-6 text-sky-700" />
@@ -507,6 +508,6 @@ export default function Home() {
           </div>
         )}
       </section>
-    </main>
+    </PageShell>
   );
 }

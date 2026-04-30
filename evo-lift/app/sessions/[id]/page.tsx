@@ -20,6 +20,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { CompactStickyBar } from "@/app/components/compact-sticky-bar";
 import { CompactRowActions } from "@/app/components/compact-row-actions";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
+import { PageShell } from "@/app/components/page-shell";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
 type SessionRow = Database["public"]["Tables"]["workout_sessions"]["Row"];
@@ -680,19 +681,19 @@ export default function SessionDetailPage() {
 
   if (isChecking) {
     return (
-      <main className="mx-auto flex w-full max-w-5xl flex-1 items-center justify-center px-4 py-12 sm:px-6 sm:py-16">
+      <PageShell className="items-center justify-center">
         <p className="text-sm text-zinc-600">Loading workout session...</p>
-      </main>
+      </PageShell>
     );
   }
 
   if (!session) {
     return (
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
+      <PageShell>
         <section className="panel p-5">
           <p className="text-sm text-red-600">{message ?? "Session not found."}</p>
         </section>
-      </main>
+      </PageShell>
     );
   }
 
@@ -731,11 +732,7 @@ export default function SessionDetailPage() {
   })();
 
   return (
-    <main
-      className={`mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16 ${
-        isCompactView ? "pt-3 pb-52 sm:pb-16" : ""
-      }`}
-    >
+    <PageShell className={isCompactView ? "pb-52 sm:pb-16" : undefined}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         {isCompactView ? (
           <div className="flex w-full items-start justify-between gap-2">
@@ -1835,6 +1832,6 @@ export default function SessionDetailPage() {
           </div>
         </div>
       ) : null}
-    </main>
+    </PageShell>
   );
 }

@@ -4,6 +4,7 @@ import { CircleCheck, Dumbbell, Lock, Mail } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { PageShell } from "@/app/components/page-shell";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -172,7 +173,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-14">
+    <PageShell className="max-w-md gap-6 pt-6 sm:pt-8">
       <section className="panel p-4">
         {isVerifiedNotice ? (
           <div className="mb-4 flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -294,6 +295,6 @@ export default function LoginPage() {
           </p>
         </section>
       ) : null}
-    </main>
+    </PageShell>
   );
 }

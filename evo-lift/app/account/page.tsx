@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
 import { toExerciseBadge } from "@/lib/exercise-badge";
+import { PageShell } from "@/app/components/page-shell";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -331,14 +332,14 @@ export default function AccountPage() {
 
   if (isChecking) {
     return (
-      <main className="mx-auto flex w-full max-w-5xl flex-1 items-center justify-center px-4 py-12 sm:px-6 sm:py-16">
+      <PageShell className="items-center justify-center">
         <p className="text-sm text-zinc-600">Checking session...</p>
-      </main>
+      </PageShell>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16">
+    <PageShell>
       <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
         <UserRound className="h-6 w-6 text-sky-700" />
         User information
@@ -525,6 +526,6 @@ export default function AccountPage() {
       {accountMessage ? (
         <section className="panel p-4 text-sm text-zinc-700">{accountMessage}</section>
       ) : null}
-    </main>
+    </PageShell>
   );
 }

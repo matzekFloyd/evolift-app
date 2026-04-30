@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { ActionButton } from "@/app/components/action-button";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
+import { PageShell } from "@/app/components/page-shell";
 import type { Database } from "@/lib/supabase/database.types";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
@@ -556,9 +557,9 @@ export default function NewSessionPage() {
 
   if (isChecking) {
     return (
-      <main className="mx-auto flex w-full max-w-5xl flex-1 items-center justify-center px-4 py-12 sm:px-6 sm:py-16">
+      <PageShell className="items-center justify-center">
         <p className="text-sm text-zinc-600">Checking session...</p>
-      </main>
+      </PageShell>
     );
   }
 
@@ -570,11 +571,7 @@ export default function NewSessionPage() {
     : exerciseRows.map((row, index) => ({ row, index }));
 
   return (
-    <main
-      className={`mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-12 sm:px-6 sm:py-16 ${
-        isCompactView ? "pb-36" : ""
-      }`}
-    >
+    <PageShell className={isCompactView ? "pb-36" : undefined}>
       <div className="flex items-center justify-between gap-3">
         <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
           <CalendarPlus className="h-6 w-6 text-sky-700" />
@@ -1151,6 +1148,6 @@ export default function NewSessionPage() {
           </div>
         </div>
       ) : null}
-    </main>
+    </PageShell>
   );
 }
