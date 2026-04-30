@@ -6,8 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/app/components/action-button";
 import { PageShell } from "@/app/components/page-shell";
+import { SessionsTable, type SessionsTableRow } from "@/app/components/sessions-table";
+import { WorkoutActivityChart } from "@/app/components/workout-activity-chart";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { toExerciseBadge } from "@/lib/exercise-badge";
 
 type WorkoutSessionRow = {
   id: string;
@@ -22,6 +23,10 @@ type SessionExerciseRow = {
   exercise_id: string;
 };
 
+type WorkoutSetLinkRow = {
+  session_exercise_id: string | null;
+};
+
 type ExerciseRow = {
   id: string;
   slug: string;
@@ -31,9 +36,6 @@ type SessionExerciseBadge = {
   slug: string;
   hasLoggedSet: boolean;
 };
-
-type SortKey = "number" | "performed_on" | "notes";
-type SortDirection = "asc" | "desc";
 
 function formatDateToYyyyMmDd(date: Date): string {
   const year = date.getFullYear();
@@ -57,23 +59,32 @@ function normalizeDateOnly(value: string): string {
   return value.slice(0, 10);
 }
 
+function dateToYyyyMmDd(value: Date): string {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, "0");
+  const day = `${value.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayYyyyMmDd(): string {
+  return dateToYyyyMmDd(new Date());
+}
+
 export default function Home() {
   const router = useRouter();
+  const todayYyyyMmDd = getTodayYyyyMmDd();
   const defaultDateRange = useMemo(() => getDefaultDateRange(), []);
-  const pageSize = 20;
+  const [isSmallPhone, setIsSmallPhone] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [sessions, setSessions] = useState<WorkoutSessionRow[]>([]);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState(defaultDateRange.from);
   const [dateTo, setDateTo] = useState(defaultDateRange.to);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortKey, setSortKey] = useState<SortKey>("performed_on");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [expandedNotesIds, setExpandedNotesIds] = useState<Set<string>>(new Set());
   const [openingSessionId, setOpeningSessionId] = useState<string | null>(null);
   const [exerciseBadgesBySessionId, setExerciseBadgesBySessionId] = useState<
     Map<string, SessionExerciseBadge[]>
   >(new Map());
+  const [setCountBySessionId, setSetCountBySessionId] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     let isMounted = true;
@@ -139,11 +150,28 @@ export default function Home() {
             return;
           }
 
-          for (const row of setsData ?? []) {
+          for (const row of (setsData ?? []) as WorkoutSetLinkRow[]) {
             if (row.session_exercise_id) {
               sessionExerciseIdsWithSets.add(row.session_exercise_id);
             }
           }
+
+          const sessionIdBySessionExerciseId = new Map<string, string>();
+          for (const exerciseRow of typedSessionExercises) {
+            sessionIdBySessionExerciseId.set(exerciseRow.id, exerciseRow.session_id);
+          }
+          const nextSetCountBySessionId = new Map<string, number>();
+          for (const row of (setsData ?? []) as WorkoutSetLinkRow[]) {
+            if (!row.session_exercise_id) {
+              continue;
+            }
+            const sessionId = sessionIdBySessionExerciseId.get(row.session_exercise_id);
+            if (!sessionId) {
+              continue;
+            }
+            nextSetCountBySessionId.set(sessionId, (nextSetCountBySessionId.get(sessionId) ?? 0) + 1);
+          }
+          setSetCountBySessionId(nextSetCountBySessionId);
         }
 
         const slugByExerciseId = new Map<string, string>();
@@ -180,6 +208,7 @@ export default function Home() {
         setExerciseBadgesBySessionId(nextMap);
       } else {
         setExerciseBadgesBySessionId(new Map());
+        setSetCountBySessionId(new Map());
       }
 
       setIsChecking(false);
@@ -192,27 +221,6 @@ export default function Home() {
     };
   }, [router]);
 
-  function handleSort(column: SortKey) {
-    if (sortKey === column) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(column);
-    setSortDirection(column === "performed_on" ? "desc" : "asc");
-  }
-
-  function toggleExpandedNotes(id: string) {
-    setExpandedNotesIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
-
   const sessionNumberById = useMemo(() => {
     const byCreatedAtAsc = [...sessions].sort(
       (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at),
@@ -224,8 +232,22 @@ export default function Home() {
     return numberMap;
   }, [sessions]);
 
+  const completedSessions = useMemo(
+    () => sessions.filter((session) => normalizeDateOnly(session.performed_on) <= todayYyyyMmDd),
+    [sessions, todayYyyyMmDd],
+  );
+
+  const plannedSessions = useMemo(
+    () =>
+      sessions
+        .filter((session) => normalizeDateOnly(session.performed_on) > todayYyyyMmDd)
+        .sort((a, b) => a.performed_on.localeCompare(b.performed_on)),
+    [sessions, todayYyyyMmDd],
+  );
+
+
   const filteredSessions = useMemo(() => {
-    return sessions.filter((session) => {
+    return completedSessions.filter((session) => {
       const performedOn = normalizeDateOnly(session.performed_on);
       if (dateFrom && performedOn < dateFrom) {
         return false;
@@ -235,59 +257,82 @@ export default function Home() {
       }
       return true;
     });
-  }, [dateFrom, dateTo, sessions]);
+  }, [completedSessions, dateFrom, dateTo]);
 
-  const sortedSessions = useMemo(() => {
-    const sorted = [...filteredSessions];
-    sorted.sort((a, b) => {
-      let left: number | string = "";
-      let right: number | string = "";
+  const workoutActivityData = useMemo(() => {
+    const completedSessions = filteredSessions.filter(
+      (session) => normalizeDateOnly(session.performed_on) <= todayYyyyMmDd,
+    );
+    const sortedCompletedDates = completedSessions
+      .map((session) => normalizeDateOnly(session.performed_on))
+      .sort();
+    const fallbackTo = todayYyyyMmDd;
+    const fallbackFromDate = new Date(`${fallbackTo}T00:00:00`);
+    fallbackFromDate.setDate(fallbackFromDate.getDate() - 26 * 7 + 1);
+    const fallbackFrom = dateToYyyyMmDd(fallbackFromDate);
+    const effectiveFrom = dateFrom || sortedCompletedDates[0] || fallbackFrom;
+    const requestedTo = dateTo || sortedCompletedDates[sortedCompletedDates.length - 1] || fallbackTo;
+    const effectiveTo = requestedTo > todayYyyyMmDd ? todayYyyyMmDd : requestedTo;
+    if (!effectiveFrom || !effectiveTo) {
+      return [];
+    }
 
-      if (sortKey === "number") {
-        left = sessionNumberById.get(a.id) ?? 0;
-        right = sessionNumberById.get(b.id) ?? 0;
-      } else if (sortKey === "performed_on") {
-        left = a.performed_on;
-        right = b.performed_on;
-      } else {
-        left = a.notes ?? "";
-        right = b.notes ?? "";
-      }
-
-      if (left < right) {
-        return sortDirection === "asc" ? -1 : 1;
-      }
-      if (left > right) {
-        return sortDirection === "asc" ? 1 : -1;
-      }
-      return 0;
-    });
-    return sorted;
-  }, [filteredSessions, sessionNumberById, sortDirection, sortKey]);
-
-  const totalPages = Math.max(1, Math.ceil(sortedSessions.length / pageSize));
-
-  const paginatedSessions = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedSessions.slice(start, start + pageSize);
-  }, [currentPage, pageSize, sortedSessions]);
+    const points: Array<{ date: string; workouts: number; sets: number }> = [];
+    const current = new Date(`${effectiveFrom}T00:00:00`);
+    const end = new Date(`${effectiveTo}T00:00:00`);
+    const workoutsByDate = new Map<string, number>();
+    const setsByDate = new Map<string, number>();
+    for (const session of completedSessions) {
+      const day = normalizeDateOnly(session.performed_on);
+      workoutsByDate.set(day, (workoutsByDate.get(day) ?? 0) + 1);
+      setsByDate.set(day, (setsByDate.get(day) ?? 0) + (setCountBySessionId.get(session.id) ?? 0));
+    }
+    while (current <= end) {
+      const day = dateToYyyyMmDd(current);
+      points.push({
+        date: day,
+        workouts: workoutsByDate.get(day) ?? 0,
+        sets: setsByDate.get(day) ?? 0,
+      });
+      current.setDate(current.getDate() + 1);
+    }
+    return points;
+  }, [dateFrom, dateTo, filteredSessions, setCountBySessionId, todayYyyyMmDd]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [dateFrom, dateTo, sortDirection, sortKey]);
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const apply = () => setIsSmallPhone(mediaQuery.matches);
+    apply();
+    const onChange = () => apply();
+    mediaQuery.addEventListener("change", onChange);
+    return () => mediaQuery.removeEventListener("change", onChange);
+  }, []);
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const completedTableRows: SessionsTableRow[] = useMemo(
+    () =>
+      filteredSessions.map((session) => ({
+        id: session.id,
+        number: sessionNumberById.get(session.id) ?? 0,
+        performedOn: session.performed_on,
+        notes: session.notes ?? "",
+        isPlanned: false,
+        badges: exerciseBadgesBySessionId.get(session.id) ?? [],
+      })),
+    [exerciseBadgesBySessionId, filteredSessions, sessionNumberById],
+  );
 
-  function renderSortIndicator(column: SortKey) {
-    if (sortKey !== column) {
-      return <span className="text-zinc-400">-</span>;
-    }
-    return <span>{sortDirection === "asc" ? "↑" : "↓"}</span>;
-  }
+  const plannedTableRows: SessionsTableRow[] = useMemo(
+    () =>
+      plannedSessions.map((session) => ({
+        id: session.id,
+        number: sessionNumberById.get(session.id) ?? 0,
+        performedOn: session.performed_on,
+        notes: session.notes ?? "",
+        isPlanned: true,
+        badges: exerciseBadgesBySessionId.get(session.id) ?? [],
+      })),
+    [exerciseBadgesBySessionId, plannedSessions, sessionNumberById],
+  );
 
   if (isChecking) {
     return (
@@ -319,6 +364,7 @@ export default function Home() {
           <p className="text-sm text-red-600">{sessionsError}</p>
         ) : (
           <div className="space-y-3">
+            <h2 className="text-base font-medium text-zinc-800">Past workouts</h2>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block text-xs font-medium text-zinc-600">
@@ -327,6 +373,7 @@ export default function Home() {
                     type="date"
                     value={dateFrom}
                     onChange={(event) => setDateFrom(event.target.value)}
+                    max={todayYyyyMmDd}
                     className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
                   />
                 </label>
@@ -336,6 +383,7 @@ export default function Home() {
                     type="date"
                     value={dateTo}
                     onChange={(event) => setDateTo(event.target.value)}
+                    max={todayYyyyMmDd}
                     className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
                   />
                 </label>
@@ -343,169 +391,60 @@ export default function Home() {
               <ActionButton
                 type="button"
                 onClick={() => {
-                  setDateFrom("");
-                  setDateTo("");
+                  setDateFrom(defaultDateRange.from);
+                  setDateTo(defaultDateRange.to);
                 }}
-                disabled={!dateFrom && !dateTo}
+                disabled={dateFrom === defaultDateRange.from && dateTo === defaultDateRange.to}
                 variant="secondary"
                 size="sm"
-                className="text-sm font-normal"
+                className="self-end text-sm font-normal"
                 iconColor="zinc"
               >
                 <FilterX className="h-3.5 w-3.5 text-zinc-500" />
                 Clear filters
               </ActionButton>
             </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-full text-left text-sm md:min-w-[520px]">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-2 py-2 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("number")}
-                      className="inline-flex items-center gap-1"
-                    >
-                      No. {renderSortIndicator("number")}
-                    </button>
-                  </th>
-                  <th className="px-2 py-2 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("performed_on")}
-                      className="inline-flex items-center gap-1"
-                    >
-                      Performed on {renderSortIndicator("performed_on")}
-                    </button>
-                  </th>
-                  <th className="px-2 py-2 font-medium">Exercises</th>
-                  <th className="hidden px-2 py-2 font-medium md:table-cell">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("notes")}
-                      className="inline-flex items-center gap-1"
-                    >
-                      Notes {renderSortIndicator("notes")}
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSessions.length === 0 ? (
-                  <tr>
-                    <td className="break-words whitespace-normal px-2 py-4 text-zinc-600" colSpan={2}>
-                      No workout sessions are stored yet.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedSessions.map((session) => {
-                    const notes = session.notes ?? "";
-                    const isExpanded = expandedNotesIds.has(session.id);
-                    const needsTruncate = notes.length > 64;
-                    const visibleNotes =
-                      needsTruncate && !isExpanded ? `${notes.slice(0, 64)}[...]` : notes || "-";
-                    const isOpening = openingSessionId === session.id;
-
-                    return (
-                    <tr
-                      key={session.id}
-                      className={`border-b last:border-b-0 ${
-                        isOpening
-                          ? "cursor-progress bg-sky-100"
-                          : "cursor-pointer hover:bg-sky-50"
-                      }`}
-                      onClick={() => {
-                        if (openingSessionId) {
-                          return;
-                        }
-                        setOpeningSessionId(session.id);
-                        router.push(`/sessions/${session.id}`);
-                      }}
-                    >
-                      <td className="px-2 py-2">{sessionNumberById.get(session.id) ?? "-"}</td>
-                      <td className="px-2 py-2">
-                        <span className="inline-flex items-center gap-2">
-                          {session.performed_on}
-                          {isOpening ? (
-                            <span className="text-xs font-medium text-sky-700">Opening...</span>
-                          ) : null}
-                        </span>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="flex flex-wrap items-center gap-1">
-                          {(exerciseBadgesBySessionId.get(session.id) ?? []).slice(0, 8).map((item, index) => {
-                            return (
-                              <span
-                                key={`${session.id}-${item.slug}-${index}`}
-                                className={`inline-flex h-6 min-w-8 items-center justify-center rounded border px-1 text-[10px] font-semibold tracking-wide ${
-                                  item.hasLoggedSet
-                                    ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                                    : "border-zinc-300 bg-zinc-50 text-zinc-700"
-                                }`}
-                                title={`${item.slug}${item.hasLoggedSet ? " (set logged)" : " (no sets yet)"}`}
-                                aria-label={item.slug}
-                              >
-                                {toExerciseBadge(item.slug)}
-                              </span>
-                            );
-                          })}
-                          {(exerciseBadgesBySessionId.get(session.id) ?? []).length === 0 ? (
-                            <span className="text-zinc-500">-</span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="hidden px-2 py-2 md:table-cell">
-                        <span>{visibleNotes}</span>
-                        {needsTruncate ? (
-                          <button
-                            type="button"
-                            className="ml-2 text-xs underline"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleExpandedNotes(session.id);
-                            }}
-                          >
-                            {isExpanded ? "[less]" : "[...]"}
-                          </button>
-                        ) : null}
-                      </td>
-                    </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+            <WorkoutActivityChart data={workoutActivityData} isCompactView={isSmallPhone} />
+          <SessionsTable
+            rows={completedTableRows}
+            dateHeaderLabel="Performed on"
+            emptyMessage="No completed workout sessions in the selected timeframe."
+            showNotesColumn={!isSmallPhone}
+            compactMode={isSmallPhone}
+            openingRowId={openingSessionId}
+            onOpenRow={(rowId) => {
+              if (openingSessionId) {
+                return;
+              }
+              setOpeningSessionId(rowId);
+              router.push(`/sessions/${rowId}`);
+            }}
+          />
           </div>
-          {sortedSessions.length > 0 ? (
-            <div className="flex items-center justify-between pt-3 text-sm">
-              <p className="text-zinc-600">
-                Page {currentPage} of {totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <ActionButton
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  variant="secondary"
-                  size="sm"
-                  className="font-normal"
-                >
-                  Previous
-                </ActionButton>
-                <ActionButton
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  variant="primary"
-                  size="sm"
-                  className="font-normal"
-                >
-                  Next
-                </ActionButton>
-              </div>
-            </div>
-          ) : null}
-          </div>
+        )}
+      </section>
+      <section className="panel p-5">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-base font-medium text-zinc-800">Planned workouts</h2>
+        </div>
+        {plannedSessions.length === 0 ? (
+          <p className="text-sm text-zinc-500">No planned workouts.</p>
+        ) : (
+          <SessionsTable
+            rows={plannedTableRows}
+            dateHeaderLabel="Planned on"
+            emptyMessage="No planned workouts."
+            showNotesColumn={!isSmallPhone}
+            compactMode={isSmallPhone}
+            openingRowId={openingSessionId}
+            onOpenRow={(rowId) => {
+              if (openingSessionId) {
+                return;
+              }
+              setOpeningSessionId(rowId);
+              router.push(`/sessions/${rowId}`);
+            }}
+          />
         )}
       </section>
     </PageShell>

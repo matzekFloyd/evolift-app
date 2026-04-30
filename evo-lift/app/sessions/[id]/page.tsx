@@ -23,6 +23,7 @@ import { CompactRowActions } from "@/app/components/compact-row-actions";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
+import { formatDateOnlyForLocale } from "@/lib/date-format";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
 type SessionRow = Database["public"]["Tables"]["workout_sessions"]["Row"];
@@ -128,6 +129,12 @@ export default function SessionDetailPage() {
   function getReadOnlyStorageKey(currentSessionId: string) {
     return `evolift:session-readonly:${currentSessionId}`;
   }
+
+function isFutureSessionDate(dateText: string): boolean {
+  const today = new Date();
+  const todayYyyyMmDd = `${today.getFullYear()}-${`${today.getMonth() + 1}`.padStart(2, "0")}-${`${today.getDate()}`.padStart(2, "0")}`;
+  return dateText > todayYyyyMmDd;
+}
 
   useEffect(() => {
     let isMounted = true;
@@ -346,6 +353,10 @@ export default function SessionDetailPage() {
   }
 
   async function handleAddSet(sessionExerciseId: string) {
+    if (session && isFutureSessionDate(session.performed_on)) {
+      showWarning("Planned workouts cannot have sets yet. Log sets on or after the session date.");
+      return;
+    }
     const draft = getResolvedAddDraft(sessionExerciseId);
     const parsedReps = Number(draft.reps);
     if (!Number.isFinite(parsedReps) || parsedReps <= 0) {
@@ -699,11 +710,9 @@ export default function SessionDetailPage() {
     );
   }
 
-  const formattedPerformedOn = new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(`${session.performed_on}T00:00:00`));
+  const formattedPerformedOn = formatDateOnlyForLocale(session.performed_on);
+  const isPlannedSession = isFutureSessionDate(session.performed_on);
+  const canManageSets = !isReadOnly && !isPlannedSession;
 
   const isCompactView = isSmallPhone;
   const shouldUseSingleExerciseFlow = isCompactView && !isReadOnly;
@@ -742,7 +751,14 @@ export default function SessionDetailPage() {
               <h1 className="truncate text-lg font-semibold tracking-tight">
                 Workout session #{sessionNumber ?? "-"}
               </h1>
-              <p className="mt-0.5 text-sm text-zinc-500">{formattedPerformedOn}</p>
+              <p className="mt-0.5 inline-flex items-center gap-2 text-sm text-zinc-500">
+                <span>{formattedPerformedOn}</span>
+                {isPlannedSession ? (
+                  <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
+                    Planned
+                  </span>
+                ) : null}
+              </p>
             </div>
             <button
               type="button"
@@ -756,7 +772,14 @@ export default function SessionDetailPage() {
         ) : (
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Workout session #{sessionNumber ?? "-"}</h1>
-            <p className="mt-0.5 text-sm text-zinc-500">{formattedPerformedOn}</p>
+            <p className="mt-0.5 inline-flex items-center gap-2 text-sm text-zinc-500">
+              <span>{formattedPerformedOn}</span>
+              {isPlannedSession ? (
+                <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
+                  Planned
+                </span>
+              ) : null}
+            </p>
           </div>
         )}
         <div
@@ -1063,7 +1086,7 @@ export default function SessionDetailPage() {
                               <span className="text-zinc-500">, </span>
                               <span>{set.is_warmup ? "Warmup" : "Working"}</span>
                             </div>
-                            {!isReadOnly ? (
+                            {canManageSets ? (
                               <div className="flex shrink-0 items-center">
                                 <CompactRowActions
                                   isEditing={false}
@@ -1092,7 +1115,7 @@ export default function SessionDetailPage() {
                           <p className="text-xs text-zinc-600">
                             Total: {((set.weight_kg ?? 0) + (sessionExercise.base_weight_kg ?? 0)).toFixed(1)} kg
                           </p>
-                          {!isReadOnly ? (
+                          {canManageSets ? (
                             <div className="mt-3 flex justify-end gap-2">
                               <button
                                 type="button"
@@ -1119,7 +1142,7 @@ export default function SessionDetailPage() {
                     </div>
                   ),
                 )}
-                {!isReadOnly ? (
+                {canManageSets ? (
                   <div className="rounded-md border border-zinc-200 bg-zinc-50/80 p-3 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
                     <p className="inline-flex items-center gap-1 text-sm text-zinc-700">
                       <Plus className="h-3 w-3 text-sky-700" />
@@ -1230,7 +1253,7 @@ export default function SessionDetailPage() {
                       <button
                         type="button"
                         onClick={() => handleAddSet(sessionExercise.id)}
-                        disabled={isSavingSet}
+                        disabled={isSavingSet || isPlannedSession}
                         className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm"
                       >
                         <Plus className="h-3.5 w-3.5 text-sky-700" />
@@ -1241,7 +1264,8 @@ export default function SessionDetailPage() {
                 ) : null}
               </div>
 
-              <div className="mt-3 hidden overflow-x-auto rounded-md border border-zinc-200 bg-white md:block">
+              {!isPlannedSession ? (
+                <div className="mt-3 hidden overflow-x-auto rounded-md border border-zinc-200 bg-white md:block">
                 <table className="w-full min-w-[640px] text-left text-sm">
                   <thead>
                     <tr className="border-b bg-zinc-50">
@@ -1249,7 +1273,7 @@ export default function SessionDetailPage() {
                       <th className="px-2 py-2">Reps</th>
                       <th className="px-2 py-2">Loaded (kg)</th>
                       <th className="px-2 py-2">Warmup</th>
-                      {!isReadOnly ? <th className="px-2 py-2 text-right">Actions</th> : null}
+                      {canManageSets ? <th className="px-2 py-2 text-right">Actions</th> : null}
                     </tr>
                   </thead>
                   <tbody>
@@ -1289,7 +1313,7 @@ export default function SessionDetailPage() {
                               }
                             />
                           </td>
-                          {!isReadOnly ? (
+                          {canManageSets ? (
                             <td className="px-2 py-2">
                               <div className="flex justify-end gap-2">
                                 <button
@@ -1328,7 +1352,7 @@ export default function SessionDetailPage() {
                             </div>
                           </td>
                           <td className="px-2 py-2">{set.is_warmup ? "Yes" : "No"}</td>
-                          {!isReadOnly ? (
+                          {canManageSets ? (
                             <td className="px-2 py-2">
                               <div className="flex justify-end gap-2">
                                 <button
@@ -1355,7 +1379,7 @@ export default function SessionDetailPage() {
                         </tr>
                       ),
                     )}
-                    {!isReadOnly ? (
+                    {canManageSets ? (
                       <tr>
                         <td className="px-2 py-2">
                           <span className="inline-flex items-center gap-1 text-xs text-zinc-600">
@@ -1402,7 +1426,7 @@ export default function SessionDetailPage() {
                             <button
                               type="button"
                               onClick={() => handleAddSet(sessionExercise.id)}
-                              disabled={isSavingSet}
+                              disabled={isSavingSet || isPlannedSession}
                             className="inline-flex w-24 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-2 py-1 text-xs text-white hover:border-sky-600 hover:bg-sky-600"
                             >
                               <Plus className="h-3.5 w-3.5 text-white" />
@@ -1414,7 +1438,8 @@ export default function SessionDetailPage() {
                     ) : null}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              ) : null}
             </section>
           );
             })}
@@ -1583,15 +1608,17 @@ export default function SessionDetailPage() {
                 <ListChecks className="mr-1 h-3.5 w-3.5 text-sky-700" />
                 Set targets
               </button>
-              <button
-                type="button"
-                onClick={() => handleAddSet(activeSessionExercise.id)}
-                disabled={isSavingSet}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.14)] hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                {isSavingSet ? "Adding..." : "Add set"}
-              </button>
+              {canManageSets ? (
+                <button
+                  type="button"
+                  onClick={() => handleAddSet(activeSessionExercise.id)}
+                  disabled={isSavingSet || isPlannedSession}
+                  className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.14)] hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  {isSavingSet ? "Adding..." : "Add set"}
+                </button>
+              ) : null}
             </>
           }
           progressLabel={`${activeExerciseIndex + 1}/${sessionExercises.length}`}
