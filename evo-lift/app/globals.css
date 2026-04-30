@@ -98,3 +98,13 @@ button:disabled {
 .panel-nested-even {
   background: #e4e4e7;
 }
+
+.compact-activity-chart .recharts-surface,
+.compact-activity-chart .recharts-wrapper {
+  outline: none !important;
+}
+
+.compact-activity-chart :focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
