@@ -5,10 +5,10 @@ import {
   BarChart,
   CartesianGrid,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { useEffect, useRef, useState } from "react";
 
 type WorkoutActivityPoint = {
   date: string;
@@ -59,6 +59,29 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
   const sortedData = [...data].sort((a, b) => a.date.localeCompare(b.date));
   const totalWorkouts = sortedData.reduce((sum, item) => sum + item.workouts, 0);
   const totalSets = sortedData.reduce((sum, item) => sum + item.sets, 0);
+  const [selectedCompactWeekStart, setSelectedCompactWeekStart] = useState<string | null>(null);
+  const compactChartRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isCompactView || !selectedCompactWeekStart) {
+      return;
+    }
+    function handlePointerDown(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+      if (!compactChartRef.current?.contains(target)) {
+        setSelectedCompactWeekStart(null);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [isCompactView, selectedCompactWeekStart]);
 
   if (sortedData.length === 0) {
     return <p className="text-xs text-zinc-500">No workouts in the selected timeframe.</p>;
@@ -91,19 +114,47 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
           weekLabel: `${startText}-${endText}`,
         };
       });
+    const selectedWeek = compactData.find((item) => item.weekStart === selectedCompactWeekStart);
 
     return (
       <div>
         <div className="mb-2 text-xs text-zinc-600">
           {totalSets} sets across {totalWorkouts} workouts in last 10 weeks
         </div>
-        <div className="h-36 w-full">
+        <div
+          ref={compactChartRef}
+          className="compact-activity-chart relative h-36 w-full"
+          style={{ WebkitTapHighlightColor: "transparent" }}
+          onClick={(event) => {
+            const target = event.target as HTMLElement;
+            const clickedBar = target.closest(".recharts-bar-rectangle, .recharts-rectangle");
+            if (!clickedBar) {
+              setSelectedCompactWeekStart(null);
+            }
+          }}
+        >
+          {selectedWeek ? (
+            <div className="pointer-events-none absolute right-2 top-2 z-10 rounded-md border border-zinc-300 bg-white/95 px-2 py-1 text-[11px] text-zinc-700 shadow-sm">
+              {selectedWeek.weekLabel}: {selectedWeek.sets} set{selectedWeek.sets === 1 ? "" : "s"}
+            </div>
+          ) : null}
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={compactData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
               <XAxis dataKey="weekLabel" tick={{ fill: "#52525b", fontSize: 10 }} minTickGap={10} />
               <YAxis allowDecimals={false} tick={{ fill: "#52525b", fontSize: 10 }} />
-              <Bar dataKey="sets" fill="#0284c7" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              <Bar
+                dataKey="sets"
+                fill="#0284c7"
+                radius={[3, 3, 0, 0]}
+                isAnimationActive={false}
+                onClick={(entry: { weekStart?: string; payload?: { weekStart?: string } }) => {
+                  const weekStart = entry.weekStart ?? entry.payload?.weekStart;
+                  if (weekStart) {
+                    setSelectedCompactWeekStart(weekStart);
+                  }
+                }}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
