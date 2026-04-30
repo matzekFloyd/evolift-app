@@ -71,7 +71,7 @@ export function HeaderActions() {
             className={`inline-flex items-center rounded-md border p-2 text-xs font-medium sm:text-sm ${
               pathname === "/"
                 ? "border-sky-700 bg-sky-700 text-white"
-                : "text-zinc-700 hover:border-sky-300 hover:bg-zinc-100 hover:text-zinc-900"
+                : "border-zinc-300 bg-white text-zinc-700 hover:border-sky-300 hover:bg-zinc-100 hover:text-zinc-900"
             }`}
             title="Home"
             aria-label="Home"
@@ -83,7 +83,7 @@ export function HeaderActions() {
             className={`inline-flex items-center rounded-md border p-2 text-xs font-medium sm:text-sm ${
               pathname === "/account"
                 ? "border-sky-700 bg-sky-700 text-white"
-                : "text-zinc-700 hover:border-sky-300 hover:bg-zinc-100 hover:text-zinc-900"
+                : "border-zinc-300 bg-white text-zinc-700 hover:border-sky-300 hover:bg-zinc-100 hover:text-zinc-900"
             }`}
             title={`Logged in as ${userEmail ?? "unknown user"}`}
             aria-label="Account"
@@ -97,7 +97,7 @@ export function HeaderActions() {
             aria-label="Log out"
             title="Log out"
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </nav>
