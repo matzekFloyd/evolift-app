@@ -91,16 +91,7 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
                 minTickGap={10}
               />
               <YAxis allowDecimals={false} tick={{ fill: "#52525b", fontSize: 10 }} />
-              <Tooltip
-                formatter={(value: number) => [value, "Sets"]}
-                labelFormatter={(label: string) =>
-                  `Week of ${new Intl.DateTimeFormat(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  }).format(toDate(label))}`
-                }
-              />
-              <Bar dataKey="sets" fill="#0284c7" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="sets" fill="#0284c7" radius={[3, 3, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -159,6 +150,13 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
     }
   }
   const visibleWeeks = paddedWeeks;
+  const weekdayLabels = ["Mon", "", "Wed", "", "Fri", "", "Sun"];
+  const monthLabels = visibleWeeks.map((week, index) => {
+    const date = toDate(week[0].date);
+    const label = new Intl.DateTimeFormat(undefined, { month: "short" }).format(date);
+    const previous = index > 0 ? new Intl.DateTimeFormat(undefined, { month: "short" }).format(toDate(visibleWeeks[index - 1][0].date)) : null;
+    return previous !== label ? label : "";
+  });
   return (
     <div>
       <div className="mb-3 flex items-center justify-between text-xs text-zinc-600">
@@ -190,36 +188,56 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
           </span>
         </div>
       </div>
-      <div
-        className="grid gap-1.5"
-        style={{ gridTemplateColumns: `repeat(${visibleWeeks.length}, minmax(0, 1fr))` }}
-      >
-        {visibleWeeks.map((week, weekIndex) => (
-          <div key={`week-${weekIndex}`} className="grid grid-rows-7 gap-1.5">
-            {week.map((day) => {
-              const parsedDate = toDate(day.date);
-              const tooltip = `${new Intl.DateTimeFormat(undefined, {
-                weekday: "short",
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              }).format(parsedDate)}: ${day.sets} set${day.sets === 1 ? "" : "s"} across ${day.workouts} workout${
-                day.workouts === 1 ? "" : "s"
-              }`;
-              return (
-                <div
-                  key={day.date}
-                  title={tooltip}
-                  aria-label={tooltip}
-                  className={`rounded-sm border border-zinc-200 ${
-                    day.isInRange ? getIntensityClass(day.sets, day.workouts) : "bg-zinc-100"
-                  }`}
-                  style={{ width: "100%", aspectRatio: "1 / 1", height: "auto" }}
-                />
-              );
-            })}
-          </div>
-        ))}
+      <div className="grid grid-cols-[32px_minmax(0,1fr)] gap-2">
+        <div />
+        <div
+          className="grid gap-1.5 px-[1px] text-[10px] text-zinc-500"
+          style={{ gridTemplateColumns: `repeat(${visibleWeeks.length}, minmax(0, 1fr))` }}
+        >
+          {monthLabels.map((label, index) => (
+            <div key={`month-${index}`} className="truncate">
+              {label}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-rows-7 gap-1.5 text-[10px] leading-3 text-zinc-500">
+          {weekdayLabels.map((label, index) => (
+            <div key={`weekday-${index}`} className="flex items-center">
+              {label}
+            </div>
+          ))}
+        </div>
+        <div
+          className="grid gap-1.5"
+          style={{ gridTemplateColumns: `repeat(${visibleWeeks.length}, minmax(0, 1fr))` }}
+        >
+          {visibleWeeks.map((week, weekIndex) => (
+            <div key={`week-${weekIndex}`} className="grid grid-rows-7 gap-1.5">
+              {week.map((day) => {
+                const parsedDate = toDate(day.date);
+                const tooltip = `${new Intl.DateTimeFormat(undefined, {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                }).format(parsedDate)}: ${day.sets} set${day.sets === 1 ? "" : "s"} across ${
+                  day.workouts
+                } workout${day.workouts === 1 ? "" : "s"}`;
+                return (
+                  <div
+                    key={day.date}
+                    title={tooltip}
+                    aria-label={tooltip}
+                    className={`cursor-pointer rounded-sm border border-zinc-200 transition hover:brightness-95 active:scale-95 ${
+                      day.isInRange ? getIntensityClass(day.sets, day.workouts) : "bg-zinc-100"
+                    }`}
+                    style={{ width: "100%", aspectRatio: "1 / 1", height: "auto" }}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

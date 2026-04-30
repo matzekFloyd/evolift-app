@@ -5,7 +5,7 @@ import { ActionButton } from "@/app/components/action-button";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 import { formatDateOnlyForLocale } from "@/lib/date-format";
 
-type SortKey = "number" | "performed_on" | "exercises" | "notes";
+type SortKey = "number" | "performed_on";
 type SortDirection = "asc" | "desc";
 
 export type SessionsTableBadge = {
@@ -29,6 +29,8 @@ type SessionsTableProps = {
   openingRowId?: string | null;
   onOpenRow: (rowId: string) => void;
   pageSize?: number;
+  showNotesColumn?: boolean;
+  compactMode?: boolean;
 };
 
 export function SessionsTable({
@@ -38,6 +40,8 @@ export function SessionsTable({
   openingRowId = null,
   onOpenRow,
   pageSize = 20,
+  showNotesColumn = true,
+  compactMode = false,
 }: SessionsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("performed_on");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -56,12 +60,6 @@ export function SessionsTable({
       } else if (sortKey === "performed_on") {
         left = a.performedOn;
         right = b.performedOn;
-      } else if (sortKey === "exercises") {
-        left = a.badges.length;
-        right = b.badges.length;
-      } else {
-        left = a.notes.toLowerCase();
-        right = b.notes.toLowerCase();
       }
 
       if (left < right) return sortDirection === "asc" ? -1 : 1;
@@ -69,7 +67,7 @@ export function SessionsTable({
       return 0;
     });
     return next;
-  }, [rows, sortDirection, sortKey]);
+  }, [rows, showNotesColumn, sortDirection, sortKey]);
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const pagedRows = useMemo(() => {
@@ -115,12 +113,16 @@ export function SessionsTable({
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-full table-fixed text-left text-sm md:min-w-[620px]">
+        <table
+          className={`w-full table-fixed text-left text-sm ${
+            compactMode ? "min-w-0" : "min-w-full md:min-w-[620px]"
+          }`}
+        >
           <colgroup>
-            <col className="w-[64px]" />
-            <col className="w-[180px]" />
-            <col className="w-[260px]" />
-            <col className="w-[180px]" />
+            <col className={compactMode ? "w-[52px]" : "w-[64px]"} />
+            <col className={compactMode ? "w-[130px]" : "w-[180px]"} />
+            <col className={showNotesColumn ? "w-[260px]" : "w-auto"} />
+            {showNotesColumn ? <col className={compactMode ? "w-[140px]" : "w-[180px]"} /> : null}
           </colgroup>
           <thead>
             <tr className="border-b">
@@ -138,22 +140,19 @@ export function SessionsTable({
                   {dateHeaderLabel} {renderSortIndicator("performed_on")}
                 </button>
               </th>
-              <th className="px-2 py-2 font-medium">
-                <button type="button" onClick={() => handleSort("exercises")} className="inline-flex items-center gap-1">
-                  Exercises {renderSortIndicator("exercises")}
-                </button>
-              </th>
-              <th className="hidden px-2 py-2 font-medium md:table-cell">
-                <button type="button" onClick={() => handleSort("notes")} className="inline-flex items-center gap-1">
-                  Notes {renderSortIndicator("notes")}
-                </button>
-              </th>
+              <th className="px-2 py-2 font-medium">Exercises</th>
+              {showNotesColumn ? (
+                <th className="px-2 py-2 font-medium">Notes</th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {sortedRows.length === 0 ? (
               <tr>
-                <td className="break-words whitespace-normal px-2 py-4 text-zinc-600" colSpan={4}>
+                <td
+                  className="break-words whitespace-normal px-2 py-4 text-zinc-600"
+                  colSpan={showNotesColumn ? 4 : 3}
+                >
                   {emptyMessage}
                 </td>
               </tr>
@@ -186,7 +185,7 @@ export function SessionsTable({
                             key={`${row.id}-${item.slug}-${index}`}
                             className={`inline-flex h-6 min-w-8 items-center justify-center rounded border px-1 text-[10px] font-semibold tracking-wide ${
                               item.hasLoggedSet
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                                ? "border-sky-300 bg-sky-100 text-sky-900"
                                 : "border-zinc-300 bg-zinc-50 text-zinc-700"
                             }`}
                             title={item.slug}
@@ -198,21 +197,23 @@ export function SessionsTable({
                         {row.badges.length === 0 ? <span className="text-zinc-500">-</span> : null}
                       </div>
                     </td>
-                    <td className="hidden px-2 py-2 md:table-cell">
-                      <span>{visibleNotes}</span>
-                      {needsTruncate ? (
-                        <button
-                          type="button"
-                          className="ml-2 text-xs underline"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleExpandedNotes(row.id);
-                          }}
-                        >
-                          {isExpanded ? "[less]" : "[...]"}
-                        </button>
-                      ) : null}
-                    </td>
+                    {showNotesColumn ? (
+                      <td className="px-2 py-2">
+                        <span>{visibleNotes}</span>
+                        {needsTruncate ? (
+                          <button
+                            type="button"
+                            className="ml-2 text-xs underline"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleExpandedNotes(row.id);
+                            }}
+                          >
+                            {isExpanded ? "[less]" : "[...]"}
+                          </button>
+                        ) : null}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })
@@ -220,7 +221,7 @@ export function SessionsTable({
           </tbody>
         </table>
       </div>
-      {sortedRows.length > 0 ? (
+      {sortedRows.length > 0 && totalPages > 1 ? (
         <div className="flex items-center justify-between pt-1 text-sm">
           <p className="text-zinc-600">
             Page {currentPage} of {totalPages}

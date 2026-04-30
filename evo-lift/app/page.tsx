@@ -348,11 +348,6 @@ export default function Home() {
         <h1 className="inline-flex items-center gap-2 text-2xl font-semibold tracking-tight">
           <ClipboardList className="h-6 w-6 text-sky-700" />
           Workout sessions
-          {plannedSessions.length > 0 ? (
-            <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
-              {plannedSessions.length} planned
-            </span>
-          ) : null}
         </h1>
         <Link
           href="/sessions/new"
@@ -369,7 +364,7 @@ export default function Home() {
           <p className="text-sm text-red-600">{sessionsError}</p>
         ) : (
           <div className="space-y-3">
-            <h2 className="text-sm font-medium text-zinc-800">Workouts overview</h2>
+            <h2 className="text-base font-medium text-zinc-800">Past workouts</h2>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block text-xs font-medium text-zinc-600">
@@ -402,7 +397,7 @@ export default function Home() {
                 disabled={dateFrom === defaultDateRange.from && dateTo === defaultDateRange.to}
                 variant="secondary"
                 size="sm"
-                className="text-sm font-normal"
+                className="self-end text-sm font-normal"
                 iconColor="zinc"
               >
                 <FilterX className="h-3.5 w-3.5 text-zinc-500" />
@@ -414,6 +409,8 @@ export default function Home() {
             rows={completedTableRows}
             dateHeaderLabel="Performed on"
             emptyMessage="No completed workout sessions in the selected timeframe."
+            showNotesColumn={!isSmallPhone}
+            compactMode={isSmallPhone}
             openingRowId={openingSessionId}
             onOpenRow={(rowId) => {
               if (openingSessionId) {
@@ -428,7 +425,7 @@ export default function Home() {
       </section>
       <section className="panel p-5">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-zinc-800">Planned workouts</h2>
+          <h2 className="text-base font-medium text-zinc-800">Planned workouts</h2>
         </div>
         {plannedSessions.length === 0 ? (
           <p className="text-sm text-zinc-500">No planned workouts.</p>
@@ -436,7 +433,9 @@ export default function Home() {
           <SessionsTable
             rows={plannedTableRows}
             dateHeaderLabel="Planned on"
-            emptyMessage="No planned sessions."
+            emptyMessage="No planned workouts."
+            showNotesColumn={!isSmallPhone}
+            compactMode={isSmallPhone}
             openingRowId={openingSessionId}
             onOpenRow={(rowId) => {
               if (openingSessionId) {
