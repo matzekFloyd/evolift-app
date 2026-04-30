@@ -1,17 +1,18 @@
 "use client";
 
 import {
-  AlertCircle,
   ArrowLeft,
-  CheckCircle2,
+  Check,
   ChevronDown,
   ChevronUp,
   Dumbbell,
+  ListChecks,
   Lock,
   LockOpen,
+  Pencil,
   Plus,
-  TriangleAlert,
   Trash2,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -21,6 +22,7 @@ import { CompactStickyBar } from "@/app/components/compact-sticky-bar";
 import { CompactRowActions } from "@/app/components/compact-row-actions";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { PageShell } from "@/app/components/page-shell";
+import { StatusNotice } from "@/app/components/status-notice";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
 type SessionRow = Database["public"]["Tables"]["workout_sessions"]["Row"];
@@ -852,36 +854,7 @@ export default function SessionDetailPage() {
           </p>
         ) : null}
         {message ? (
-          <section
-            className={`mt-3 rounded-md border px-3 py-2 text-sm shadow-sm ${
-              messageTone === "error"
-                ? "border-red-200 bg-red-50 text-red-700"
-                : messageTone === "warning"
-                  ? "border-amber-200 bg-amber-50 text-amber-800"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="inline-flex items-center gap-2">
-                {messageTone === "error" ? (
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                ) : messageTone === "warning" ? (
-                  <TriangleAlert className="h-4 w-4 shrink-0" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                )}
-                <span>{message}</span>
-              </p>
-              <button
-                type="button"
-                onClick={clearMessage}
-                aria-label="Dismiss message"
-                className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-sm leading-none opacity-70 hover:opacity-100"
-              >
-                ×
-              </button>
-            </div>
-          </section>
+          <StatusNotice message={message} tone={messageTone} onDismiss={clearMessage} className="mt-3" />
         ) : null}
 
         {sessionExercises.length === 0 ? (
@@ -993,7 +966,7 @@ export default function SessionDetailPage() {
                       <input
                         type="number"
                         min={0}
-                        step="0.5"
+                        step="0.25"
                         value={targetsWeightKg}
                         onChange={(event) => setTargetsWeightKg(event.target.value)}
                         className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
@@ -1004,16 +977,18 @@ export default function SessionDetailPage() {
                     <button
                       type="button"
                       onClick={cancelTargetsEdit}
-                      className="inline-flex h-9 w-24 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                      className="inline-flex h-9 w-24 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                     >
+                      <X className="h-3 w-3 text-zinc-500" />
                       Cancel
                     </button>
                     <button
                       type="button"
                       onClick={() => saveTargetsForExercise()}
                       disabled={isSavingTargets}
-                      className="inline-flex h-9 w-24 items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-2 text-xs text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
+                      className="inline-flex h-9 w-24 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-2 text-xs text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
                     >
+                      <Check className="h-3 w-3 text-white" />
                       {isSavingTargets ? "Saving..." : "Save"}
                     </button>
                   </div>
@@ -1043,7 +1018,7 @@ export default function SessionDetailPage() {
                           <input
                             type="number"
                             min={0}
-                            step="0.5"
+                            step="0.25"
                             value={editDraft.weightKg}
                             onChange={(event) =>
                               setEditDraft((prev) => ({ ...prev, weightKg: event.target.value }))
@@ -1123,16 +1098,18 @@ export default function SessionDetailPage() {
                                 type="button"
                                 onClick={() => deleteSet(set.id)}
                                 disabled={isSavingSet}
-                                className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                                className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                               >
+                                <Trash2 className="h-3 w-3 text-red-600" />
                                 Delete
                               </button>
                               <button
                                 type="button"
                                 onClick={() => startEdit(set)}
                                 disabled={isSavingSet}
-                                className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                                className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                               >
+                                <Pencil className="h-3 w-3 text-sky-700" />
                                 Edit
                               </button>
                             </div>
@@ -1201,7 +1178,7 @@ export default function SessionDetailPage() {
                         <input
                           type="number"
                           min={0}
-                          step="0.5"
+                          step="0.25"
                           value={addDraft.weightKg}
                           onChange={(event) =>
                             updateAddDraft(sessionExercise.id, "weightKg", event.target.value)
@@ -1254,8 +1231,9 @@ export default function SessionDetailPage() {
                         type="button"
                         onClick={() => handleAddSet(sessionExercise.id)}
                         disabled={isSavingSet}
-                        className="rounded-md border px-2 py-1 text-sm"
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm"
                       >
+                        <Plus className="h-3.5 w-3.5 text-sky-700" />
                         Add set
                       </button>
                     </div>
@@ -1294,7 +1272,7 @@ export default function SessionDetailPage() {
                             <input
                               type="number"
                               min={0}
-                              step="0.5"
+                              step="0.25"
                               value={editDraft.weightKg}
                               onChange={(event) =>
                                 setEditDraft((prev) => ({ ...prev, weightKg: event.target.value }))
@@ -1318,8 +1296,9 @@ export default function SessionDetailPage() {
                                   type="button"
                                   onClick={() => saveEdit(set.id)}
                                   disabled={isSavingSet}
-                                  className="w-24 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                                  className="inline-flex w-24 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                                 >
+                                  <Check className="h-3 w-3 text-emerald-600" />
                                   Save
                                 </button>
                                 <button
@@ -1329,8 +1308,9 @@ export default function SessionDetailPage() {
                                     setEditDraft(emptyDraft);
                                   }}
                                   disabled={isSavingSet}
-                                  className="w-24 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                                  className="inline-flex w-24 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                                 >
+                                  <X className="h-3 w-3 text-zinc-500" />
                                   Cancel
                                 </button>
                               </div>
@@ -1355,16 +1335,18 @@ export default function SessionDetailPage() {
                                   type="button"
                                   onClick={() => deleteSet(set.id)}
                                   disabled={isSavingSet}
-                                  className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                                  className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                                 >
+                                  <Trash2 className="h-3 w-3 text-red-600" />
                                   Delete
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => startEdit(set)}
                                   disabled={isSavingSet}
-                                  className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                                  className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                                 >
+                                  <Pencil className="h-3 w-3 text-sky-700" />
                                   Edit
                                 </button>
                               </div>
@@ -1397,7 +1379,7 @@ export default function SessionDetailPage() {
                           <input
                             type="number"
                             min={0}
-                            step="0.5"
+                            step="0.25"
                             value={addDraft.weightKg}
                             onChange={(event) =>
                               updateAddDraft(sessionExercise.id, "weightKg", event.target.value)
@@ -1421,8 +1403,9 @@ export default function SessionDetailPage() {
                               type="button"
                               onClick={() => handleAddSet(sessionExercise.id)}
                               disabled={isSavingSet}
-                            className="w-24 rounded-md border border-sky-700 bg-sky-700 px-2 py-1 text-xs text-white hover:border-sky-600 hover:bg-sky-600"
+                            className="inline-flex w-24 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-2 py-1 text-xs text-white hover:border-sky-600 hover:bg-sky-600"
                             >
+                              <Plus className="h-3.5 w-3.5 text-white" />
                               Add set
                             </button>
                           </div>
@@ -1489,7 +1472,7 @@ export default function SessionDetailPage() {
                       <input
                         type="number"
                         min={0}
-                        step="0.5"
+                        step="0.25"
                         value={addExerciseDraft.baseWeightKg}
                         onChange={(event) =>
                           setAddExerciseDraft((prev) => ({ ...prev, baseWeightKg: event.target.value }))
@@ -1546,7 +1529,7 @@ export default function SessionDetailPage() {
                       <input
                         type="number"
                         min={0}
-                        step="0.5"
+                        step="0.25"
                         value={addExerciseDraft.targetWeightKg}
                         onChange={(event) =>
                           setAddExerciseDraft((prev) => ({
@@ -1597,6 +1580,7 @@ export default function SessionDetailPage() {
                 onClick={() => startTargetsEdit(activeSessionExercise, "sheet")}
                 className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100"
               >
+                <ListChecks className="mr-1 h-3.5 w-3.5 text-sky-700" />
                 Set targets
               </button>
               <button
@@ -1675,7 +1659,7 @@ export default function SessionDetailPage() {
                   <input
                     type="number"
                     min={0}
-                    step="0.5"
+                    step="0.25"
                     value={targetsWeightKg}
                     onChange={(event) => setTargetsWeightKg(event.target.value)}
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
@@ -1686,16 +1670,18 @@ export default function SessionDetailPage() {
                 <button
                   type="button"
                   onClick={cancelTargetsEdit}
-                  className="inline-flex h-10 flex-1 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                  className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                 >
+                  <X className="h-3.5 w-3.5 text-zinc-500" />
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => saveTargetsForExercise()}
                   disabled={isSavingTargets}
-                  className="inline-flex h-10 flex-1 items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
+                  className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
                 >
+                  <Check className="h-3.5 w-3.5 text-white" />
                   {isSavingTargets ? "Saving..." : "Save targets"}
                 </button>
               </div>
@@ -1754,7 +1740,7 @@ export default function SessionDetailPage() {
                     <input
                       type="number"
                       min={0}
-                      step="0.5"
+                      step="0.25"
                       value={addExerciseDraft.baseWeightKg}
                       onChange={(event) =>
                         setAddExerciseDraft((prev) => ({ ...prev, baseWeightKg: event.target.value }))
@@ -1791,7 +1777,7 @@ export default function SessionDetailPage() {
                     <input
                       type="number"
                       min={0}
-                      step="0.5"
+                      step="0.25"
                       value={addExerciseDraft.targetWeightKg}
                       onChange={(event) =>
                         setAddExerciseDraft((prev) => ({ ...prev, targetWeightKg: event.target.value }))

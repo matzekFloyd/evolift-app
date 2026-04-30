@@ -1,12 +1,13 @@
 "use client";
 
-import { Lock, Mail, UserRound } from "lucide-react";
+import { Check, Eraser, Lock, Mail, Save, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 import { PageShell } from "@/app/components/page-shell";
+import { StatusNotice } from "@/app/components/status-notice";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -30,7 +31,12 @@ export default function AccountPage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isSavingDefaults, setIsSavingDefaults] = useState(false);
   const [isClearingDefaults, setIsClearingDefaults] = useState(false);
+  const [emailMessage, setEmailMessage] = useState<string | null>(null);
+  const [emailMessageTone, setEmailMessageTone] = useState<"error" | "success">("error");
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordMessageTone, setPasswordMessageTone] = useState<"error" | "success">("error");
   const [defaultsMessage, setDefaultsMessage] = useState<string | null>(null);
+  const [defaultsMessageTone, setDefaultsMessageTone] = useState<"error" | "success">("success");
   const [accountMessage, setAccountMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -127,24 +133,27 @@ export default function AccountPage() {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(normalized)) {
-      setAccountMessage("Please enter a valid new email address.");
+      setEmailMessageTone("error");
+      setEmailMessage("Please enter a valid new email address.");
       return;
     }
 
     setIsSavingEmail(true);
-    setAccountMessage(null);
+    setEmailMessage(null);
 
     const { error } = await supabaseBrowserClient.auth.updateUser({
       email: normalized,
     });
 
     if (error) {
-      setAccountMessage(error.message);
+      setEmailMessageTone("error");
+      setEmailMessage(error.message);
       setIsSavingEmail(false);
       return;
     }
 
-    setAccountMessage(
+    setEmailMessageTone("success");
+    setEmailMessage(
       "Email update requested. Please check your inbox to confirm the change.",
     );
     setNewEmail("");
@@ -155,30 +164,35 @@ export default function AccountPage() {
     event.preventDefault();
 
     if (!userEmail) {
-      setAccountMessage("Could not verify current user email. Please log in again.");
+      setPasswordMessageTone("error");
+      setPasswordMessage("Could not verify current user email. Please log in again.");
       return;
     }
     if (!currentPassword) {
-      setAccountMessage("Please enter your current password.");
+      setPasswordMessageTone("error");
+      setPasswordMessage("Please enter your current password.");
       return;
     }
     if (newPassword.length < 8) {
-      setAccountMessage("New password must be at least 8 characters.");
+      setPasswordMessageTone("error");
+      setPasswordMessage("New password must be at least 8 characters.");
       return;
     }
     if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      setAccountMessage(
+      setPasswordMessageTone("error");
+      setPasswordMessage(
         "New password must include at least one letter and one number.",
       );
       return;
     }
     if (newPassword !== confirmNewPassword) {
-      setAccountMessage("New password and confirmation do not match.");
+      setPasswordMessageTone("error");
+      setPasswordMessage("New password and confirmation do not match.");
       return;
     }
 
     setIsSavingPassword(true);
-    setAccountMessage(null);
+    setPasswordMessage(null);
 
     const { error: reauthError } = await supabaseBrowserClient.auth.signInWithPassword(
       {
@@ -188,7 +202,8 @@ export default function AccountPage() {
     );
 
     if (reauthError) {
-      setAccountMessage("Current password is incorrect.");
+      setPasswordMessageTone("error");
+      setPasswordMessage("Current password is incorrect.");
       setIsSavingPassword(false);
       return;
     }
@@ -198,12 +213,14 @@ export default function AccountPage() {
     });
 
     if (error) {
-      setAccountMessage(error.message);
+      setPasswordMessageTone("error");
+      setPasswordMessage(error.message);
       setIsSavingPassword(false);
       return;
     }
 
-    setAccountMessage("Password updated successfully.");
+    setPasswordMessageTone("success");
+    setPasswordMessage("Password updated successfully.");
     setCurrentPassword("");
     setNewPassword("");
     setConfirmNewPassword("");
@@ -214,11 +231,13 @@ export default function AccountPage() {
     event.preventDefault();
 
     if (!userId) {
-      setAccountMessage("Please log in again to save defaults.");
+      setDefaultsMessageTone("error");
+      setDefaultsMessage("Please log in again to save defaults.");
       return;
     }
     if (!selectedExerciseId) {
-      setAccountMessage("Please select an exercise.");
+      setDefaultsMessageTone("error");
+      setDefaultsMessage("Please select an exercise.");
       return;
     }
     setDefaultsMessage(null);
@@ -229,24 +248,28 @@ export default function AccountPage() {
     const parsedTargetWeight = defaultTargetWeightKg ? Number(defaultTargetWeightKg) : null;
 
     if (parsedBaseWeight !== null && (!Number.isFinite(parsedBaseWeight) || parsedBaseWeight < 0)) {
-      setAccountMessage("Please enter a valid default base weight.");
+      setDefaultsMessageTone("error");
+      setDefaultsMessage("Please enter a valid default base weight.");
       return;
     }
     if (parsedTargetSets !== null && (!Number.isFinite(parsedTargetSets) || parsedTargetSets <= 0)) {
-      setAccountMessage("Please enter a valid default target sets value.");
+      setDefaultsMessageTone("error");
+      setDefaultsMessage("Please enter a valid default target sets value.");
       return;
     }
     if (parsedTargetReps !== null && (!Number.isFinite(parsedTargetReps) || parsedTargetReps <= 0)) {
-      setAccountMessage("Please enter a valid default target reps value.");
+      setDefaultsMessageTone("error");
+      setDefaultsMessage("Please enter a valid default target reps value.");
       return;
     }
     if (parsedTargetWeight !== null && (!Number.isFinite(parsedTargetWeight) || parsedTargetWeight < 0)) {
-      setAccountMessage("Please enter a valid default target weight.");
+      setDefaultsMessageTone("error");
+      setDefaultsMessage("Please enter a valid default target weight.");
       return;
     }
 
     setIsSavingDefaults(true);
-    setAccountMessage(null);
+    setDefaultsMessage(null);
 
     const payload: Database["public"]["Tables"]["user_exercise_defaults"]["Insert"] = {
       user_id: userId,
@@ -264,7 +287,8 @@ export default function AccountPage() {
       .single();
 
     if (error || !data) {
-      setAccountMessage(`Could not save exercise defaults: ${error?.message ?? "Unknown error"}`);
+      setDefaultsMessageTone("error");
+      setDefaultsMessage(`Could not save exercise defaults: ${error?.message ?? "Unknown error"}`);
       setIsSavingDefaults(false);
       return;
     }
@@ -276,23 +300,26 @@ export default function AccountPage() {
     });
     const selectedExerciseLabel =
       exerciseOptions.find((option) => option.id === selectedExerciseId)?.label ?? "Exercise";
+    setDefaultsMessageTone("success");
     setDefaultsMessage(`Defaults saved for ${selectedExerciseLabel}.`);
     setIsSavingDefaults(false);
   }
 
   async function handleClearDefaults() {
     if (!userId) {
-      setAccountMessage("Please log in again to clear defaults.");
+      setDefaultsMessageTone("error");
+      setDefaultsMessage("Please log in again to clear defaults.");
       return;
     }
     if (!selectedExerciseId) {
-      setAccountMessage("Please select an exercise first.");
+      setDefaultsMessageTone("error");
+      setDefaultsMessage("Please select an exercise first.");
       return;
     }
     setDefaultsMessage(null);
 
     setIsClearingDefaults(true);
-    setAccountMessage(null);
+    setDefaultsMessage(null);
 
     const payload: Database["public"]["Tables"]["user_exercise_defaults"]["Insert"] = {
       user_id: userId,
@@ -310,7 +337,8 @@ export default function AccountPage() {
       .single();
 
     if (error || !data) {
-      setAccountMessage(`Could not clear exercise defaults: ${error?.message ?? "Unknown error"}`);
+      setDefaultsMessageTone("error");
+      setDefaultsMessage(`Could not clear exercise defaults: ${error?.message ?? "Unknown error"}`);
       setIsClearingDefaults(false);
       return;
     }
@@ -324,9 +352,7 @@ export default function AccountPage() {
     setDefaultTargetSets("");
     setDefaultTargetReps("");
     setDefaultTargetWeightKg("");
-    const selectedExerciseLabel =
-      exerciseOptions.find((option) => option.id === selectedExerciseId)?.label ?? "Exercise";
-    setDefaultsMessage(`Defaults cleared for ${selectedExerciseLabel}.`);
+    setDefaultsMessage(null);
     setIsClearingDefaults(false);
   }
 
@@ -344,7 +370,7 @@ export default function AccountPage() {
         <UserRound className="h-6 w-6 text-sky-700" />
         User information
       </h1>
-      <section className="panel p-5 text-sm">
+      <section className="panel px-5 py-6 text-sm">
         <h2 className="inline-flex items-center gap-1 font-medium">
           <Mail className="h-4 w-4 text-zinc-500" />
           Email
@@ -370,18 +396,29 @@ export default function AccountPage() {
               placeholder="new-email@example.com"
             />
           </label>
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            {emailMessage ? (
+              <StatusNotice
+                message={emailMessage}
+                tone={emailMessageTone}
+                onDismiss={() => setEmailMessage(null)}
+                className="sm:flex-1"
+              />
+            ) : (
+              <div className="hidden sm:block sm:flex-1" />
+            )}
             <button
               type="submit"
               disabled={isSavingEmail}
-              className="h-10 w-full rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
+              className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
             >
+              <Check className="h-3.5 w-3.5 text-white" />
               Change email
             </button>
           </div>
         </form>
       </section>
-      <section className="panel p-5 text-sm">
+      <section className="panel px-5 py-6 text-sm">
         <h2 className="inline-flex items-center gap-1 font-medium">
           <Lock className="h-4 w-4 text-zinc-500" />
           Change password
@@ -420,52 +457,65 @@ export default function AccountPage() {
               placeholder="Repeat new password"
             />
           </label>
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            {passwordMessage ? (
+              <StatusNotice
+                message={passwordMessage}
+                tone={passwordMessageTone}
+                onDismiss={() => setPasswordMessage(null)}
+                className="sm:flex-1"
+              />
+            ) : (
+              <div className="hidden sm:block sm:flex-1" />
+            )}
             <button
               type="submit"
               disabled={isSavingPassword}
-              className="h-10 w-full rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
+              className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
             >
+              <Check className="h-3.5 w-3.5 text-white" />
               Change password
             </button>
           </div>
         </form>
       </section>
-      <section className="panel p-5 text-sm">
+      <section className="panel px-5 py-6 text-sm">
         <h2 className="inline-flex items-center gap-1 font-medium">
           <UserRound className="h-4 w-4 text-zinc-500" />
           Exercise defaults
         </h2>
         <form onSubmit={handleDefaultsSave} className="mt-3 space-y-3">
-          <label className="block text-sm font-medium">
-            Exercise
-            <select
-              required
-              value={selectedExerciseId}
-              onChange={(event) => setSelectedExerciseId(event.target.value)}
-              className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-            >
-              <option value="">Select exercise</option>
-              {exerciseOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label} ({toExerciseBadge(option.slug)})
-                </option>
-              ))}
-            </select>
-          </label>
           <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-medium">
+              Exercise
+              <select
+                required
+                value={selectedExerciseId}
+                onChange={(event) => setSelectedExerciseId(event.target.value)}
+                className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+              >
+                <option value="">Select exercise</option>
+                {exerciseOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label} ({toExerciseBadge(option.slug)})
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="block text-sm font-medium">
               Default base weight (kg)
               <input
                 type="number"
                 min={0}
-                step="0.5"
+                step="0.25"
                 value={defaultBaseWeightKg}
                 onChange={(event) => setDefaultBaseWeightKg(event.target.value)}
                 className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                 placeholder="e.g. 20"
               />
             </label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
             <label className="block text-sm font-medium">
               Default target sets
               <input
@@ -493,7 +543,7 @@ export default function AccountPage() {
               <input
                 type="number"
                 min={0}
-                step="0.5"
+                step="0.25"
                 value={defaultTargetWeightKg}
                 onChange={(event) => setDefaultTargetWeightKg(event.target.value)}
                 className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
@@ -502,21 +552,32 @@ export default function AccountPage() {
             </label>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-h-5 text-xs text-zinc-600">{defaultsMessage ?? ""}</p>
+            {defaultsMessage ? (
+              <StatusNotice
+                message={defaultsMessage}
+                tone={defaultsMessageTone}
+                onDismiss={() => setDefaultsMessage(null)}
+                className="sm:flex-1"
+              />
+            ) : (
+              <div className="hidden sm:block sm:flex-1" />
+            )}
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={handleClearDefaults}
               disabled={isClearingDefaults || !selectedExerciseId}
-              className="h-10 w-full rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:w-40"
+              className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:w-40"
             >
+              <Eraser className="h-3.5 w-3.5 text-amber-600" />
               {isClearingDefaults ? "Clearing..." : "Clear defaults"}
             </button>
             <button
               type="submit"
               disabled={isSavingDefaults}
-              className="h-10 w-full rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
+              className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
             >
+              <Save className="h-3.5 w-3.5 text-white" />
               {isSavingDefaults ? "Saving..." : "Save defaults"}
             </button>
             </div>
@@ -524,7 +585,7 @@ export default function AccountPage() {
         </form>
       </section>
       {accountMessage ? (
-        <section className="panel p-4 text-sm text-zinc-700">{accountMessage}</section>
+        <StatusNotice message={accountMessage} tone="error" onDismiss={() => setAccountMessage(null)} />
       ) : null}
     </PageShell>
   );

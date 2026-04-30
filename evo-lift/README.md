@@ -1,4 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## EvoLift
+
+EvoLift is a mobile-first workout logging app built with Next.js and Supabase.
+
+For product language, visual consistency, and action/feedback conventions, see:
+
+- [`BRAND_GUIDELINES.md`](./BRAND_GUIDELINES.md)
+
+## Contributing UI changes
+
+Before merging UI or copy updates, quickly validate against the brand checklist in
+[`BRAND_GUIDELINES.md`](./BRAND_GUIDELINES.md).
+
+Minimum review checklist:
+
+- Terminology is consistent (`Workout session`, `Set`, `Target weight (kg)`, `<number> reps`).
+- Action colors and icons match intent (primary/neutral/destructive/success).
+- Feedback uses shared status notice patterns where applicable.
+- Mobile/compact behavior remains usable for high-frequency actions.
+- Text is concise, clear, and action-oriented.
+
+This repo started as a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 

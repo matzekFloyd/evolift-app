@@ -56,7 +56,7 @@ export function HeaderActions() {
   }
 
   return (
-    <header className="border-b bg-white/90">
+    <header className="border-b border-sky-200 bg-gradient-to-r from-sky-200 via-sky-100 to-sky-50">
       <nav className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
         <Link
           className="inline-flex items-center gap-2 rounded px-1 py-1 text-sm font-semibold tracking-tight text-zinc-900 hover:text-sky-800"
