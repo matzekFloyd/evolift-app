@@ -41,7 +41,6 @@ type AddExerciseDraft = {
   notes: string;
 };
 
-type QuickSetPreset = "same" | "plusRep" | "plusWeight";
 type MessageTone = "error" | "warning" | "success";
 
 const emptyDraft: SetDraft = {
@@ -87,7 +86,6 @@ export default function SessionDetailPage() {
   const [isAddExerciseExpanded, setIsAddExerciseExpanded] = useState(false);
   const [isAddExerciseSheetOpen, setIsAddExerciseSheetOpen] = useState(false);
   const [isTargetsSheetOpen, setIsTargetsSheetOpen] = useState(false);
-  const [targetsBaseWeightKg, setTargetsBaseWeightKg] = useState("");
   const [targetsSets, setTargetsSets] = useState("");
   const [targetsReps, setTargetsReps] = useState("");
   const [targetsWeightKg, setTargetsWeightKg] = useState("");
@@ -330,7 +328,8 @@ export default function SessionDetailPage() {
   }
 
   function getResolvedAddDraft(sessionExerciseId: string): SetDraft {
-    const draft = addDrafts[sessionExerciseId] ?? emptyDraft;
+    const existingDraft = addDrafts[sessionExerciseId];
+    const draft = existingDraft ?? emptyDraft;
     const lastSet = getLastSet(sessionExerciseId);
     if (!lastSet) {
       return draft;
@@ -339,37 +338,8 @@ export default function SessionDetailPage() {
       reps: draft.reps || String(lastSet.reps),
       weightKg:
         draft.weightKg || (lastSet.weight_kg == null ? "" : String(lastSet.weight_kg)),
-      isWarmup: draft.isWarmup,
+      isWarmup: existingDraft ? draft.isWarmup : lastSet.is_warmup,
     };
-  }
-
-  function applyQuickSetPreset(sessionExerciseId: string, preset: QuickSetPreset) {
-    const lastSet = getLastSet(sessionExerciseId);
-    if (!lastSet) {
-      showWarning("Add one set first to enable quick actions.");
-      return;
-    }
-
-    let nextReps = lastSet.reps;
-    let nextWeight = lastSet.weight_kg;
-    let nextWarmup = lastSet.is_warmup;
-
-    if (preset === "plusRep") {
-      nextReps += 1;
-    }
-    if (preset === "plusWeight") {
-      nextWeight = Number(((nextWeight ?? 0) + 2.5).toFixed(1));
-    }
-
-    clearMessage();
-    setAddDrafts((prev) => ({
-      ...prev,
-      [sessionExerciseId]: {
-        reps: String(nextReps),
-        weightKg: nextWeight == null ? "" : String(nextWeight),
-        isWarmup: nextWarmup,
-      },
-    }));
   }
 
   async function handleAddSet(sessionExerciseId: string) {
@@ -630,9 +600,6 @@ export default function SessionDetailPage() {
 
   function startTargetsEdit(sessionExercise: SessionExerciseRow, mode: "inline" | "sheet") {
     setTargetsSessionExerciseId(sessionExercise.id);
-    setTargetsBaseWeightKg(
-      sessionExercise.base_weight_kg == null ? "" : String(sessionExercise.base_weight_kg),
-    );
     setTargetsSets(sessionExercise.target_sets == null ? "" : String(sessionExercise.target_sets));
     setTargetsReps(sessionExercise.target_reps == null ? "" : String(sessionExercise.target_reps));
     setTargetsWeightKg(
@@ -652,15 +619,10 @@ export default function SessionDetailPage() {
       return;
     }
 
-    const parsedBaseWeight = targetsBaseWeightKg ? Number(targetsBaseWeightKg) : null;
     const parsedSets = targetsSets ? Number(targetsSets) : null;
     const parsedReps = targetsReps ? Number(targetsReps) : null;
     const parsedWeight = targetsWeightKg ? Number(targetsWeightKg) : null;
 
-    if (parsedBaseWeight !== null && (!Number.isFinite(parsedBaseWeight) || parsedBaseWeight < 0)) {
-      showError("Please enter a valid base weight.");
-      return;
-    }
     if (parsedSets !== null && (!Number.isFinite(parsedSets) || parsedSets <= 0)) {
       showError("Please enter a valid target sets value.");
       return;
@@ -680,7 +642,6 @@ export default function SessionDetailPage() {
     const { data, error } = await supabaseBrowserClient
       .from("workout_session_exercises")
       .update({
-        base_weight_kg: parsedBaseWeight,
         target_sets: parsedSets,
         target_reps: parsedReps,
         target_weight_kg: parsedWeight,
@@ -940,7 +901,6 @@ export default function SessionDetailPage() {
             exerciseLabels.get(sessionExercise.exercise_id) ?? sessionExercise.exercise_id;
           const exerciseBadge = exerciseBadgeById.get(sessionExercise.exercise_id);
           const targetParts = [
-            sessionExercise.base_weight_kg != null ? `base ${sessionExercise.base_weight_kg} kg` : null,
             sessionExercise.target_sets ? `${sessionExercise.target_sets} sets` : null,
             sessionExercise.target_reps ? `${sessionExercise.target_reps} reps` : null,
             sessionExercise.target_weight_kg != null ? `${sessionExercise.target_weight_kg} kg` : null,
@@ -1010,18 +970,7 @@ export default function SessionDetailPage() {
               </div>
               {!shouldUseSingleExerciseFlow && targetsSessionExerciseId === sessionExercise.id ? (
                 <div className="mt-3 rounded-md border border-zinc-200 bg-white p-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block text-sm font-medium">
-                      Base (kg)
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.5"
-                        value={targetsBaseWeightKg}
-                        onChange={(event) => setTargetsBaseWeightKg(event.target.value)}
-                        className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                      />
-                    </label>
+                  <div className="grid grid-cols-3 gap-3">
                     <label className="block text-sm font-medium">
                       Target sets
                       <input
@@ -1043,7 +992,7 @@ export default function SessionDetailPage() {
                       />
                     </label>
                     <label className="block text-sm font-medium">
-                      Target kg
+                      Target weight (kg)
                       <input
                         type="number"
                         min={0}
@@ -1136,7 +1085,7 @@ export default function SessionDetailPage() {
                             <div className="min-w-0 truncate text-sm text-zinc-700">
                               <span className="font-medium text-zinc-900">Set {set.set_number}</span>
                               <span className="text-zinc-500"> - </span>
-                              <span>Reps {set.reps}</span>
+                              <span>{set.reps} reps</span>
                               <span className="text-zinc-500">, </span>
                               <span>{set.weight_kg ?? "-"} kg</span>
                               <span className="text-zinc-500">, </span>
@@ -1175,19 +1124,19 @@ export default function SessionDetailPage() {
                             <div className="mt-3 flex justify-end gap-2">
                               <button
                                 type="button"
-                                onClick={() => startEdit(set)}
-                                disabled={isSavingSet}
-                                className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
                                 onClick={() => deleteSet(set.id)}
                                 disabled={isSavingSet}
                                 className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                               >
                                 Delete
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => startEdit(set)}
+                                disabled={isSavingSet}
+                                className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                              >
+                                Edit
                               </button>
                             </div>
                           ) : null}
@@ -1202,32 +1151,6 @@ export default function SessionDetailPage() {
                       <Plus className="h-3 w-3 text-sky-700" />
                       New set
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => applyQuickSetPreset(sessionExercise.id, "same")}
-                        disabled={isSavingSet || !lastSet}
-                        className="rounded-full border px-2 py-1 text-xs disabled:opacity-60"
-                      >
-                        Same as last
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyQuickSetPreset(sessionExercise.id, "plusRep")}
-                        disabled={isSavingSet || !lastSet}
-                        className="rounded-full border px-2 py-1 text-xs disabled:opacity-60"
-                      >
-                        +1 rep
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyQuickSetPreset(sessionExercise.id, "plusWeight")}
-                        disabled={isSavingSet || !lastSet}
-                        className="rounded-full border px-2 py-1 text-xs disabled:opacity-60"
-                      >
-                        +2.5 kg
-                      </button>
-                    </div>
                     {lastSet ? (
                       <p className="mt-2 text-[11px] text-zinc-500">
                         Last set: {lastSet.reps} reps @ {lastSet.weight_kg ?? 0} kg
@@ -1433,19 +1356,19 @@ export default function SessionDetailPage() {
                               <div className="flex justify-end gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => startEdit(set)}
-                                  disabled={isSavingSet}
-                                  className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
                                   onClick={() => deleteSet(set.id)}
                                   disabled={isSavingSet}
                                   className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                                 >
                                   Delete
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(set)}
+                                  disabled={isSavingSet}
+                                  className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                                >
+                                  Edit
                                 </button>
                               </div>
                             </td>
@@ -1497,14 +1420,6 @@ export default function SessionDetailPage() {
                         </td>
                         <td className="px-2 py-2">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => applyQuickSetPreset(sessionExercise.id, "same")}
-                              disabled={isSavingSet || !lastSet}
-                            className="w-24 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
-                            >
-                              Same as last
-                            </button>
                             <button
                               type="button"
                               onClick={() => handleAddSet(sessionExercise.id)}
@@ -1737,18 +1652,7 @@ export default function SessionDetailPage() {
                 </button>
               </div>
               <p className="mb-3 text-xs text-zinc-600">{targetsExerciseLabel}</p>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm font-medium">
-                  Base (kg)
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.5"
-                    value={targetsBaseWeightKg}
-                    onChange={(event) => setTargetsBaseWeightKg(event.target.value)}
-                    className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                  />
-                </label>
+              <div className="grid grid-cols-3 gap-3">
                 <label className="block text-sm font-medium">
                   Target sets
                   <input
@@ -1770,7 +1674,7 @@ export default function SessionDetailPage() {
                   />
                 </label>
                 <label className="block text-sm font-medium">
-                  Target kg
+                  Target weight (kg)
                   <input
                     type="number"
                     min={0}
@@ -1886,7 +1790,7 @@ export default function SessionDetailPage() {
                     />
                   </label>
                   <label className="block text-sm font-medium">
-                    Target kg
+                    Target weight (kg)
                     <input
                       type="number"
                       min={0}
