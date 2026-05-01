@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { PageShell } from "@/app/components/page-shell";
 import { SegmentedTabs } from "@/app/components/segmented-tabs";
+import {
+  getExerciseMetadataCacheStatus,
+  loadExerciseMetadata,
+} from "@/lib/exercise-metadata-cache";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,6 +21,20 @@ export default function LoginPage() {
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifiedNotice, setIsVerifiedNotice] = useState(false);
+
+  async function warmExerciseMetadataCache() {
+    const startedAt = performance.now();
+    const cacheStatus = getExerciseMetadataCacheStatus(5 * 60 * 1000);
+    try {
+      await loadExerciseMetadata(supabaseBrowserClient, { ttlMs: 5 * 60 * 1000 });
+      const elapsedMs = Number((performance.now() - startedAt).toFixed(1));
+      console.info(`[Perf] login metadata warm-up ${cacheStatus} in ${elapsedMs}ms`);
+    } catch {
+      // Best-effort warm-up: login flow should not fail on cache preloading.
+      const elapsedMs = Number((performance.now() - startedAt).toFixed(1));
+      console.info(`[Perf] login metadata warm-up failed after ${elapsedMs}ms`);
+    }
+  }
 
   function getFriendlyAuthError(rawMessage: string): string {
     const messageLower = rawMessage.toLowerCase();
@@ -74,6 +92,7 @@ export default function LoginPage() {
       }
 
       if (session) {
+        void warmExerciseMetadataCache();
         router.replace("/");
         return;
       }
@@ -85,6 +104,7 @@ export default function LoginPage() {
       data: { subscription },
     } = supabaseBrowserClient.auth.onAuthStateChange((_event, session) => {
       if (session) {
+        void warmExerciseMetadataCache();
         router.replace("/");
         return;
       }
@@ -128,6 +148,7 @@ export default function LoginPage() {
       return;
     }
 
+    await warmExerciseMetadataCache();
     router.replace("/");
     setIsLoading(false);
   }

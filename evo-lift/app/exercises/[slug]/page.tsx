@@ -8,17 +8,15 @@ import { AppTable } from "@/app/components/app-table";
 import { PageShell } from "@/app/components/page-shell";
 import { KpiBadge } from "@/app/components/kpi-badge";
 import { StatusNotice } from "@/app/components/status-notice";
+import { loadExerciseMetadata } from "@/lib/exercise-metadata-cache";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { formatDateOnlyForLocale } from "@/lib/date-format";
 import { toExerciseBadge } from "@/lib/exercise-badge";
+import { createPageLoadPerfTracker } from "@/lib/page-load-perf";
 
 type ExerciseRow = {
   id: string;
   slug: string;
-};
-
-type TranslationRow = {
-  name: string;
 };
 
 type SessionRow = {
@@ -92,6 +90,7 @@ export default function ExerciseDetailPage() {
 
   useEffect(() => {
     let isMounted = true;
+    const perf = createPageLoadPerfTracker("/exercises/[slug]");
 
     async function loadData() {
       if (!slug) {
@@ -102,7 +101,7 @@ export default function ExerciseDetailPage() {
 
       const {
         data: { session },
-      } = await supabaseBrowserClient.auth.getSession();
+      } = await perf.trackQuery("auth.getSession", () => supabaseBrowserClient.auth.getSession());
       if (!isMounted) {
         return;
       }
@@ -111,37 +110,39 @@ export default function ExerciseDetailPage() {
         return;
       }
 
-      const { data: exerciseData, error: exerciseError } = await supabaseBrowserClient
-        .from("exercises")
-        .select("id, slug")
-        .eq("slug", slug)
-        .maybeSingle();
-      if (exerciseError) {
-        setErrorMessage("Could not load exercise.");
+      let metadataRows: Array<{ id: string; slug: string; label: string }> = [];
+      try {
+        metadataRows = await perf.trackQuery("exerciseMetadata.load", () =>
+          loadExerciseMetadata(supabaseBrowserClient, { ttlMs: 5 * 60 * 1000 }),
+        );
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Could not load exercise.");
         setIsLoading(false);
+        perf.flush();
         return;
       }
+      const exerciseData = metadataRows.find((row) => row.slug === slug);
       if (!exerciseData) {
         setIsNotFound(true);
         setIsLoading(false);
+        perf.flush();
         return;
       }
 
       const exercise = exerciseData as ExerciseRow;
-      const { data: translationData } = await supabaseBrowserClient
-        .from("exercise_translations")
-        .select("name")
-        .eq("exercise_id", exercise.id)
-        .eq("lang_code", "en")
-        .maybeSingle();
 
-      const { data: sessionRows, error: sessionsError } = await supabaseBrowserClient
-        .from("workout_sessions")
-        .select("id, performed_on")
-        .eq("user_id", session.user.id);
+      const { data: sessionRows, error: sessionsError } = await perf.trackQuery(
+        "workout_sessions.selectPerformedOn",
+        () =>
+          supabaseBrowserClient
+            .from("workout_sessions")
+            .select("id, performed_on")
+            .eq("user_id", session.user.id),
+      );
       if (sessionsError) {
         setErrorMessage("Could not load your workout sessions.");
         setIsLoading(false);
+        perf.flush();
         return;
       }
 
@@ -154,14 +155,19 @@ export default function ExerciseDetailPage() {
 
       let history: ExerciseSetHistoryRow[] = [];
       if (sessionIds.length > 0) {
-        const { data: sessionExerciseRows, error: sessionExercisesError } = await supabaseBrowserClient
-          .from("workout_session_exercises")
-          .select("id, session_id, base_weight_kg")
-          .eq("exercise_id", exercise.id)
-          .in("session_id", sessionIds);
+        const { data: sessionExerciseRows, error: sessionExercisesError } = await perf.trackQuery(
+          "workout_session_exercises.selectByExerciseAndSessionIds",
+          () =>
+            supabaseBrowserClient
+              .from("workout_session_exercises")
+              .select("id, session_id, base_weight_kg")
+              .eq("exercise_id", exercise.id)
+              .in("session_id", sessionIds),
+        );
         if (sessionExercisesError) {
           setErrorMessage("Could not load exercise sessions.");
           setIsLoading(false);
+          perf.flush();
           return;
         }
 
@@ -175,13 +181,18 @@ export default function ExerciseDetailPage() {
         }
 
         if (sessionExerciseIds.length > 0) {
-          const { data: setRows, error: setsError } = await supabaseBrowserClient
-            .from("workout_sets")
-            .select("session_exercise_id, set_number, reps, weight_kg, is_warmup")
-            .in("session_exercise_id", sessionExerciseIds);
+          const { data: setRows, error: setsError } = await perf.trackQuery(
+            "workout_sets.selectBySessionExerciseIds",
+            () =>
+              supabaseBrowserClient
+                .from("workout_sets")
+                .select("session_exercise_id, set_number, reps, weight_kg, is_warmup")
+                .in("session_exercise_id", sessionExerciseIds),
+          );
           if (setsError) {
             setErrorMessage("Could not load exercise sets.");
             setIsLoading(false);
+            perf.flush();
             return;
           }
 
@@ -224,9 +235,10 @@ export default function ExerciseDetailPage() {
       if (!isMounted) {
         return;
       }
-      setExerciseLabel((translationData as TranslationRow | null)?.name ?? exercise.slug);
+      setExerciseLabel(exerciseData.label);
       setHistoryRows(history);
       setIsLoading(false);
+      perf.flush();
     }
 
     void loadData();

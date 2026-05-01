@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Weight } from "lucide-react";
 import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
+import { loadExerciseMetadata } from "@/lib/exercise-metadata-cache";
+import { createPageLoadPerfTracker } from "@/lib/page-load-perf";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 
@@ -42,11 +44,12 @@ export default function ExercisesPage() {
 
   useEffect(() => {
     let isMounted = true;
+    const perf = createPageLoadPerfTracker("/exercises");
 
     async function loadData() {
       const {
         data: { session },
-      } = await supabaseBrowserClient.auth.getSession();
+      } = await perf.trackQuery("auth.getSession", () => supabaseBrowserClient.auth.getSession());
 
       if (!isMounted) {
         return;
@@ -56,52 +59,48 @@ export default function ExercisesPage() {
         return;
       }
 
-      const { data: exerciseRows, error: exerciseError } = await supabaseBrowserClient
-        .from("exercises")
-        .select("id, slug")
-        .order("slug", { ascending: true });
-      if (exerciseError) {
-        setErrorMessage("Could not load exercises.");
+      let cachedMetadata: Array<{ id: string; slug: string; label: string }> = [];
+      try {
+        cachedMetadata = await perf.trackQuery("exerciseMetadata.load", () =>
+          loadExerciseMetadata(supabaseBrowserClient, { ttlMs: 5 * 60 * 1000 }),
+        );
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Could not load exercises.");
         setIsLoading(false);
+        perf.flush();
         return;
       }
 
-      const exerciseIds = ((exerciseRows ?? []) as ExerciseRow[]).map((row) => row.id);
-      let translationRows: TranslationRow[] = [];
-      if (exerciseIds.length > 0) {
-        const { data, error: translationError } = await supabaseBrowserClient
-          .from("exercise_translations")
-          .select("exercise_id, name")
-          .eq("lang_code", "en")
-          .in("exercise_id", exerciseIds);
-        if (translationError) {
-          setErrorMessage("Could not load exercise labels.");
-          setIsLoading(false);
-          return;
-        }
-        translationRows = (data ?? []) as TranslationRow[];
-      }
-
-      const { data: sessionRows, error: sessionsError } = await supabaseBrowserClient
-        .from("workout_sessions")
-        .select("id")
-        .eq("user_id", session.user.id);
+      const { data: sessionRows, error: sessionsError } = await perf.trackQuery(
+        "workout_sessions.selectUserIds",
+        async () =>
+          await supabaseBrowserClient
+            .from("workout_sessions")
+            .select("id")
+            .eq("user_id", session.user.id),
+      );
       if (sessionsError) {
         setErrorMessage("Could not load your workout sessions.");
         setIsLoading(false);
+        perf.flush();
         return;
       }
 
       const sessionIds = ((sessionRows ?? []) as SessionIdRow[]).map((row) => row.id);
       const exerciseCountById = new Map<string, number>();
       if (sessionIds.length > 0) {
-        const { data: sessionExerciseRows, error: sessionExercisesError } = await supabaseBrowserClient
-          .from("workout_session_exercises")
-          .select("exercise_id")
-          .in("session_id", sessionIds);
+        const { data: sessionExerciseRows, error: sessionExercisesError } = await perf.trackQuery(
+          "workout_session_exercises.selectBySessionIds",
+          async () =>
+            await supabaseBrowserClient
+              .from("workout_session_exercises")
+              .select("exercise_id")
+              .in("session_id", sessionIds),
+        );
         if (sessionExercisesError) {
           setErrorMessage("Could not load exercise history.");
           setIsLoading(false);
+          perf.flush();
           return;
         }
         for (const row of (sessionExerciseRows ?? []) as SessionExerciseRow[]) {
@@ -109,20 +108,16 @@ export default function ExercisesPage() {
         }
       }
 
-      const translationByExerciseId = new Map<string, string>();
-      for (const row of translationRows) {
-        translationByExerciseId.set(row.exercise_id, row.name);
-      }
-
-      const nextItems = ((exerciseRows ?? []) as ExerciseRow[]).map((row) => ({
+      const nextItems = cachedMetadata.map((row) => ({
         id: row.id,
         slug: row.slug,
-        label: translationByExerciseId.get(row.id) ?? row.slug,
+        label: row.label,
         sessionCount: exerciseCountById.get(row.id) ?? 0,
       }));
 
       setExercises(nextItems);
       setIsLoading(false);
+      perf.flush();
     }
 
     void loadData();
