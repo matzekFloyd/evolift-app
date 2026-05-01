@@ -9,12 +9,14 @@ import {
   ListChecks,
   Lock,
   LockOpen,
+  History,
   Pencil,
   Plus,
   Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
@@ -749,8 +751,10 @@ function isFutureSessionDate(dateText: string): boolean {
   const isCompactView = isSmallPhone;
   const shouldUseSingleExerciseFlow = isCompactView && !isReadOnly;
   const exerciseBadgeById = new Map<string, string>();
+  const exerciseSlugById = new Map<string, string>();
   for (const option of exerciseOptions) {
     exerciseBadgeById.set(option.id, toExerciseBadge(option.slug));
+    exerciseSlugById.set(option.id, option.slug);
   }
   const visibleExercises = shouldUseSingleExerciseFlow
     ? sessionExercises
@@ -925,6 +929,7 @@ function isFutureSessionDate(dateText: string): boolean {
           const exerciseLabel =
             exerciseLabels.get(sessionExercise.exercise_id) ?? sessionExercise.exercise_id;
           const exerciseBadge = exerciseBadgeById.get(sessionExercise.exercise_id);
+          const exerciseSlug = exerciseSlugById.get(sessionExercise.exercise_id);
           const targetParts = [
             sessionExercise.target_sets ? `${sessionExercise.target_sets} sets` : null,
             sessionExercise.target_reps ? `${sessionExercise.target_reps} reps` : null,
@@ -942,14 +947,28 @@ function isFutureSessionDate(dateText: string): boolean {
               }
             >
               <div className="flex w-full items-start justify-between gap-3 text-left">
-                <span className="inline-flex min-w-0 items-center gap-2 truncate text-lg font-medium text-zinc-900">
-                  {exerciseBadge ? (
-                    <span className="inline-flex h-6 min-w-8 shrink-0 items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-1 text-[10px] font-semibold tracking-wide text-zinc-700">
-                      {exerciseBadge}
-                    </span>
-                  ) : null}
-                  <span className="truncate">{exerciseLabel}</span>
-                </span>
+                {exerciseSlug ? (
+                  <Link
+                    href={`/exercises/${exerciseSlug}`}
+                    className="inline-flex min-w-0 items-center gap-2 truncate rounded-sm text-lg font-medium text-zinc-900 underline-offset-2 hover:text-sky-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+                  >
+                    {exerciseBadge ? (
+                      <span className="inline-flex h-6 min-w-8 shrink-0 items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-1 text-[10px] font-semibold tracking-wide text-zinc-700">
+                        {exerciseBadge}
+                      </span>
+                    ) : null}
+                    <span className="truncate">{exerciseLabel}</span>
+                  </Link>
+                ) : (
+                  <span className="inline-flex min-w-0 items-center gap-2 truncate text-lg font-medium text-zinc-900">
+                    {exerciseBadge ? (
+                      <span className="inline-flex h-6 min-w-8 shrink-0 items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-1 text-[10px] font-semibold tracking-wide text-zinc-700">
+                        {exerciseBadge}
+                      </span>
+                    ) : null}
+                    <span className="truncate">{exerciseLabel}</span>
+                  </span>
+                )}
                 <span className="shrink-0 text-xs text-zinc-500">
                   {index + 1}/{sessionExercises.length}
                 </span>
@@ -970,28 +989,39 @@ function isFutureSessionDate(dateText: string): boolean {
                     <span className="text-xs text-zinc-500">none set</span>
                   )}
                 </div>
-                {!isReadOnly && !shouldUseSingleExerciseFlow ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const isOpenForThisExercise =
-                        targetsSessionExerciseId === sessionExercise.id && !isTargetsSheetOpen;
-                      if (isOpenForThisExercise) {
-                        cancelTargetsEdit();
-                        return;
-                      }
-                      startTargetsEdit(sessionExercise, "inline");
-                    }}
-                    className="inline-flex h-9 w-24 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-                  >
-                    {targetsSessionExerciseId === sessionExercise.id && !isTargetsSheetOpen ? (
-                      <ChevronUp className="mr-1 h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="mr-1 h-3.5 w-3.5" />
-                    )}
-                    Set targets
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 items-center gap-2">
+                  {exerciseSlug ? (
+                    <Link
+                      href={`/exercises/${exerciseSlug}`}
+                      className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                    >
+                      <History className="h-3.5 w-3.5 text-sky-700" />
+                      Open history
+                    </Link>
+                  ) : null}
+                  {!isReadOnly && !shouldUseSingleExerciseFlow ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isOpenForThisExercise =
+                          targetsSessionExerciseId === sessionExercise.id && !isTargetsSheetOpen;
+                        if (isOpenForThisExercise) {
+                          cancelTargetsEdit();
+                          return;
+                        }
+                        startTargetsEdit(sessionExercise, "inline");
+                      }}
+                      className="inline-flex h-9 w-24 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
+                    >
+                      {targetsSessionExerciseId === sessionExercise.id && !isTargetsSheetOpen ? (
+                        <ChevronUp className="mr-1 h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="mr-1 h-3.5 w-3.5" />
+                      )}
+                      Set targets
+                    </button>
+                  ) : null}
+                </div>
               </div>
               {!shouldUseSingleExerciseFlow && targetsSessionExerciseId === sessionExercise.id ? (
                 <div className="mt-3 rounded-md border border-zinc-200 bg-white p-3">
