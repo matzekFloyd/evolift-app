@@ -9,6 +9,7 @@ import {
   Line,
   ResponsiveContainer,
   Tooltip,
+  type TooltipContentProps,
   XAxis,
   YAxis,
 } from "recharts";
@@ -28,18 +29,6 @@ type WeeklyVolumeChartPoint = {
 type InsightsWeeklyVolumeChartProps = {
   data: WeeklyVolumeChartPoint[];
   metric: "volume" | "workingSets";
-};
-
-type ChartTooltipEntry = {
-  name?: NameType;
-  value?: ValueType;
-  payload?: WeeklyVolumeChartPoint;
-};
-
-type ChartTooltipRenderProps = {
-  active?: boolean;
-  payload?: ChartTooltipEntry[];
-  label?: string | number;
 };
 
 function formatWeekLabel(dateText: string): string {
@@ -106,29 +95,6 @@ export function InsightsWeeklyVolumeChart({ data, metric }: InsightsWeeklyVolume
     () => data.find((item) => item.weekStart === selectedWeekStart) ?? null,
     [data, selectedWeekStart],
   );
-  const selectedTooltipPayload = useMemo(() => {
-    if (!selectedWeek) {
-      return undefined;
-    }
-    const metricValue = isVolumeMetric ? selectedWeek.volumeKg : selectedWeek.workingSets;
-    const movingAverageValue = selectedWeek.movingAverage ?? null;
-    return [
-      {
-        name: barName,
-        value: metricValue,
-        payload: selectedWeek,
-      },
-      ...(movingAverageValue != null
-        ? [
-            {
-              name: movingAverageName,
-              value: movingAverageValue,
-              payload: selectedWeek,
-            },
-          ]
-        : []),
-    ];
-  }, [barName, isVolumeMetric, movingAverageName, selectedWeek]);
   const selectedWeekRangeLabel = useMemo(() => {
     if (!selectedWeek) {
       return "";
@@ -151,7 +117,7 @@ export function InsightsWeeklyVolumeChart({ data, metric }: InsightsWeeklyVolume
     active,
     payload,
     label,
-  }: ChartTooltipRenderProps) => {
+  }: TooltipContentProps<ValueType, NameType>) => {
     if (!active || !payload || payload.length === 0 || typeof label !== "string") {
       return null;
     }
@@ -221,8 +187,6 @@ export function InsightsWeeklyVolumeChart({ data, metric }: InsightsWeeklyVolume
             content={renderTooltip}
             cursor={isCompactView ? false : undefined}
             active={isCompactView ? false : undefined}
-            label={isCompactView && selectedWeek != null ? selectedWeek.weekStart : undefined}
-            payload={isCompactView ? selectedTooltipPayload : undefined}
           />
           <Bar
             dataKey={valueKey}
