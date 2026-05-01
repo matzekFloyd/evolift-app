@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { PageShell } from "@/app/components/page-shell";
+import { SegmentedTabs } from "@/app/components/segmented-tabs";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -181,43 +182,25 @@ export default function LoginPage() {
             <p>Email confirmed. You can log in now.</p>
           </div>
         ) : null}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight">
             <Dumbbell className="h-5 w-5 text-sky-700" />
             EvoLift
           </div>
-          <div className="inline-flex w-full rounded-lg border border-zinc-300 bg-zinc-50 p-1 sm:w-auto">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("login");
-                setMessage(null);
-                setSuccessEmail(null);
-              }}
-              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium sm:w-24 sm:flex-none ${
-                mode === "login"
-                  ? "bg-sky-100 text-sky-900"
-                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              Log in
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("register");
-                setMessage(null);
-                setSuccessEmail(null);
-              }}
-              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium sm:w-24 sm:flex-none ${
-                mode === "register"
-                  ? "bg-sky-100 text-sky-900"
-                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              Register
-            </button>
-          </div>
+          <SegmentedTabs
+            value={mode}
+            onChange={(nextMode) => {
+              setMode(nextMode);
+              setMessage(null);
+              setSuccessEmail(null);
+            }}
+            className="w-full sm:w-auto"
+            buttonMinWidthClassName="sm:min-w-0"
+            options={[
+              { value: "login", label: "Log in" },
+              { value: "register", label: "Register" },
+            ]}
+          />
         </div>
 
         <form

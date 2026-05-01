@@ -11,6 +11,7 @@ type SegmentedTabsProps<T extends string> = {
   onChange: (value: T) => void;
   options: SegmentedTabOption<T>[];
   className?: string;
+  buttonMinWidthClassName?: string;
 };
 
 export function SegmentedTabs<T extends string>({
@@ -18,10 +19,11 @@ export function SegmentedTabs<T extends string>({
   onChange,
   options,
   className,
+  buttonMinWidthClassName = "sm:min-w-36",
 }: SegmentedTabsProps<T>) {
   return (
     <div
-      className={`rounded-md border border-zinc-300 bg-zinc-100 p-1 ${className ?? ""}`.trim()}
+      className={`rounded-lg border border-zinc-300 bg-zinc-50 p-1 ${className ?? ""}`.trim()}
       role="tablist"
       aria-label="Sections"
     >
@@ -35,10 +37,10 @@ export function SegmentedTabs<T extends string>({
               role="tab"
               aria-selected={isActive}
               onClick={() => onChange(option.value)}
-              className={`inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors sm:w-auto sm:min-w-36 ${
+              className={`inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors sm:w-auto ${buttonMinWidthClassName} ${
                 isActive
-                  ? "border-zinc-300 bg-white text-zinc-900 shadow-[0_2px_6px_rgba(0,0,0,0.12)]"
-                  : "border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-white/80 hover:text-zinc-900"
+                  ? "bg-sky-100 text-sky-900"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
               }`}
             >
               {option.icon}

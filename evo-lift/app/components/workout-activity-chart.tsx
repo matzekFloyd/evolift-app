@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type WorkoutActivityPoint = {
   date: string;
@@ -19,6 +19,8 @@ type WorkoutActivityPoint = {
 type WorkoutActivityHeatmapProps = {
   data: WorkoutActivityPoint[];
   isCompactView?: boolean;
+  highlightedDates?: string[] | null;
+  onHighlightDatesChange?: (dates: string[] | null) => void;
 };
 
 function getIntensityClass(sets: number, workouts: number): string {
@@ -55,12 +57,18 @@ function toYyyyMmDd(value: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutActivityHeatmapProps) {
+export function WorkoutActivityChart({
+  data,
+  isCompactView = false,
+  highlightedDates = null,
+  onHighlightDatesChange,
+}: WorkoutActivityHeatmapProps) {
   const sortedData = [...data].sort((a, b) => a.date.localeCompare(b.date));
   const totalWorkouts = sortedData.reduce((sum, item) => sum + item.workouts, 0);
   const totalSets = sortedData.reduce((sum, item) => sum + item.sets, 0);
   const [selectedCompactWeekStart, setSelectedCompactWeekStart] = useState<string | null>(null);
   const compactChartRef = useRef<HTMLDivElement | null>(null);
+  const highlightedDateSet = useMemo(() => new Set(highlightedDates ?? []), [highlightedDates]);
 
   useEffect(() => {
     if (!isCompactView || !selectedCompactWeekStart) {
@@ -73,6 +81,7 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
       }
       if (!compactChartRef.current?.contains(target)) {
         setSelectedCompactWeekStart(null);
+              onHighlightDatesChange?.(null);
       }
     }
     document.addEventListener("mousedown", handlePointerDown);
@@ -81,7 +90,7 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("touchstart", handlePointerDown);
     };
-  }, [isCompactView, selectedCompactWeekStart]);
+  }, [isCompactView, onHighlightDatesChange, selectedCompactWeekStart]);
 
   if (sortedData.length === 0) {
     return <p className="text-xs text-zinc-500">No workouts in the selected timeframe.</p>;
@@ -130,6 +139,7 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
             const clickedBar = target.closest(".recharts-bar-rectangle, .recharts-rectangle");
             if (!clickedBar) {
               setSelectedCompactWeekStart(null);
+                onHighlightDatesChange?.(null);
             }
           }}
         >
@@ -152,6 +162,15 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
                   const weekStart = entry.weekStart ?? entry.payload?.weekStart;
                   if (weekStart) {
                     setSelectedCompactWeekStart(weekStart);
+                    const weekStartDate = toDate(weekStart);
+                    const weekEndDate = new Date(weekStartDate);
+                    weekEndDate.setDate(weekStartDate.getDate() + 6);
+                    const weekStartKey = toYyyyMmDd(weekStartDate);
+                    const weekEndKey = toYyyyMmDd(weekEndDate);
+                    const weekDates = sortedData
+                      .map((item) => item.date)
+                      .filter((date) => date >= weekStartKey && date <= weekEndKey);
+                    onHighlightDatesChange?.(weekDates);
                   }
                 }}
               />
@@ -291,10 +310,21 @@ export function WorkoutActivityChart({ data, isCompactView = false }: WorkoutAct
                     key={day.date}
                     title={tooltip}
                     aria-label={tooltip}
-                    className={`cursor-pointer rounded-sm border border-zinc-200 transition hover:brightness-95 active:scale-95 ${
+                    className={`cursor-pointer rounded-sm border transition hover:brightness-95 active:scale-95 ${
+                      highlightedDateSet.has(day.date) && day.isInRange
+                        ? "border-sky-700 ring-1 ring-sky-600/40"
+                        : "border-zinc-200"
+                    } ${
                       day.isInRange ? getIntensityClass(day.sets, day.workouts) : "bg-zinc-100"
                     }`}
                     style={{ width: "100%", aspectRatio: "1 / 1", height: "auto" }}
+                    onMouseEnter={() => {
+                      if (!day.isInRange) {
+                        return;
+                      }
+                      onHighlightDatesChange?.([day.date]);
+                    }}
+                    onMouseLeave={() => onHighlightDatesChange?.(null)}
                   />
                 );
               })}

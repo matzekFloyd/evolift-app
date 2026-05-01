@@ -27,6 +27,7 @@ type SessionsTableProps = {
   dateHeaderLabel: string;
   emptyMessage: string;
   openingRowId?: string | null;
+  highlightedPerformedOnDates?: string[] | null;
   onOpenRow: (rowId: string) => void;
   pageSize?: number;
   showNotesColumn?: boolean;
@@ -38,6 +39,7 @@ export function SessionsTable({
   dateHeaderLabel,
   emptyMessage,
   openingRowId = null,
+  highlightedPerformedOnDates = null,
   onOpenRow,
   pageSize = 20,
   showNotesColumn = true,
@@ -47,6 +49,10 @@ export function SessionsTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedNotesIds, setExpandedNotesIds] = useState<Set<string>>(new Set());
+  const highlightedDateSet = useMemo(
+    () => new Set(highlightedPerformedOnDates ?? []),
+    [highlightedPerformedOnDates],
+  );
 
   const sortedRows = useMemo(() => {
     const next = [...rows];
@@ -163,11 +169,16 @@ export function SessionsTable({
                 const visibleNotes =
                   needsTruncate && !isExpanded ? `${row.notes.slice(0, 64)}[...]` : row.notes || "-";
                 const isOpening = openingRowId === row.id;
+                const isHighlighted = highlightedDateSet.has(row.performedOn.slice(0, 10));
                 return (
                   <tr
                     key={row.id}
                     className={`border-b last:border-b-0 ${
-                      isOpening ? "cursor-progress bg-sky-100" : "cursor-pointer hover:bg-sky-50"
+                      isOpening
+                        ? "cursor-progress bg-sky-100"
+                        : isHighlighted
+                          ? "cursor-pointer bg-sky-100/70 hover:bg-sky-100"
+                          : "cursor-pointer hover:bg-sky-50"
                     }`}
                     onClick={() => onOpenRow(row.id)}
                   >
