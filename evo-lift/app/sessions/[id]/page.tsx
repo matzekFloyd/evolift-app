@@ -177,7 +177,7 @@ function isFutureSessionDate(dateText: string): boolean {
         () =>
           supabaseBrowserClient
             .from("workout_sessions")
-            .select("id, user_id, performed_on, notes, created_at")
+            .select("id, user_id, performed_on, notes, created_at, updated_at")
             .eq("id", sessionId)
             .single(),
       );
