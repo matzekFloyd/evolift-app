@@ -29,7 +29,7 @@ export function AppFooter() {
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
       <div className="pt-3">
-        <p>© {year} Mathias Mayrhofer · EvoLift</p>
+        <p>© {year} Mathias Mayrhofer · EvoLift v2</p>
       </div>
     </footer>
   );
