@@ -9,11 +9,13 @@ import {
   Line,
   ResponsiveContainer,
   Tooltip,
-  type TooltipProps,
   XAxis,
   YAxis,
 } from "recharts";
-import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
+import type {
+  NameType,
+  ValueType,
+} from "recharts/types/component/DefaultTooltipContent";
 
 type WeeklyVolumeChartPoint = {
   weekStart: string;
@@ -26,6 +28,18 @@ type WeeklyVolumeChartPoint = {
 type InsightsWeeklyVolumeChartProps = {
   data: WeeklyVolumeChartPoint[];
   metric: "volume" | "workingSets";
+};
+
+type ChartTooltipEntry = {
+  name?: NameType;
+  value?: ValueType;
+  payload?: WeeklyVolumeChartPoint;
+};
+
+type ChartTooltipRenderProps = {
+  active?: boolean;
+  payload?: ChartTooltipEntry[];
+  label?: string | number;
 };
 
 function formatWeekLabel(dateText: string): string {
@@ -137,7 +151,7 @@ export function InsightsWeeklyVolumeChart({ data, metric }: InsightsWeeklyVolume
     active,
     payload,
     label,
-  }: TooltipProps<ValueType, NameType>) => {
+  }: ChartTooltipRenderProps) => {
     if (!active || !payload || payload.length === 0 || typeof label !== "string") {
       return null;
     }
