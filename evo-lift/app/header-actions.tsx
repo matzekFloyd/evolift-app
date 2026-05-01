@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Dumbbell, House, LogOut, UserRound } from "lucide-react";
+import { BarChart3, Dumbbell, House, LogOut, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -67,10 +67,10 @@ export function HeaderActions() {
         <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
           <Link
             href="/"
-            className={`inline-flex items-center rounded-md border p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
+            className={`inline-flex items-center rounded-md p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
               pathname === "/"
-                ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-600"
-                : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-200/80 hover:text-zinc-900"
+                ? "bg-sky-700 text-white hover:bg-sky-600"
+                : "bg-white text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
             }`}
             title="Home"
             aria-label="Home"
@@ -79,10 +79,10 @@ export function HeaderActions() {
           </Link>
           <Link
             href="/exercises"
-            className={`inline-flex items-center rounded-md border p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
+            className={`inline-flex items-center rounded-md p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
               pathname.startsWith("/exercises")
-                ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-600"
-                : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-200/80 hover:text-zinc-900"
+                ? "bg-sky-700 text-white hover:bg-sky-600"
+                : "bg-white text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
             }`}
             title="Exercises"
             aria-label="Exercises"
@@ -90,11 +90,23 @@ export function HeaderActions() {
             <Dumbbell className="h-4 w-4" />
           </Link>
           <Link
+            href="/insights"
+            className={`inline-flex items-center rounded-md p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
+              pathname.startsWith("/insights")
+                ? "bg-sky-700 text-white hover:bg-sky-600"
+                : "bg-white text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
+            }`}
+            title="Insights"
+            aria-label="Insights"
+          >
+            <BarChart3 className="h-4 w-4" />
+          </Link>
+          <Link
             href="/account"
-            className={`inline-flex items-center rounded-md border p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
+            className={`inline-flex items-center rounded-md p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
               pathname === "/account"
-                ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-600"
-                : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-200/80 hover:text-zinc-900"
+                ? "bg-sky-700 text-white hover:bg-sky-600"
+                : "bg-white text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
             }`}
             title={`Logged in as ${userEmail ?? "unknown user"}`}
             aria-label="Account"
@@ -104,7 +116,7 @@ export function HeaderActions() {
           <button
             type="button"
             onClick={handleAuthClick}
-            className="inline-flex items-center rounded-md border border-zinc-300 bg-zinc-50 p-2 text-xs font-medium text-zinc-700 hover:border-zinc-400 hover:bg-zinc-200/80 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm"
+            className="inline-flex items-center rounded-md bg-zinc-50 p-2 text-xs font-medium text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm"
             aria-label="Log out"
             title="Log out"
           >

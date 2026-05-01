@@ -407,10 +407,10 @@ export default function Home() {
                 disabled={dateFrom === defaultDateRange.from && dateTo === defaultDateRange.to}
                 variant="secondary"
                 size="sm"
-                className="self-end text-sm font-normal"
-                iconColor="zinc"
+                className="self-end text-sm font-normal text-amber-800 hover:text-amber-900"
+                iconColor="amber"
               >
-                <FilterX className="h-3.5 w-3.5 text-zinc-500" />
+                <FilterX className="h-3.5 w-3.5" />
                 Clear filters
               </ActionButton>
             </div>

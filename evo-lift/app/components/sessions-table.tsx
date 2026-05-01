@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ActionButton } from "@/app/components/action-button";
+import { AppTable } from "@/app/components/app-table";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 import { formatDateOnlyForLocale } from "@/lib/date-format";
 
@@ -118,12 +119,11 @@ export function SessionsTable({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto">
-        <table
-          className={`w-full table-fixed text-left text-sm ${
-            compactMode ? "min-w-0" : "min-w-full md:min-w-[620px]"
-          }`}
-        >
+      <AppTable
+        tableClassName={`table-fixed ${
+          compactMode ? "min-w-0" : "min-w-full md:min-w-[620px]"
+        }`}
+      >
           <colgroup>
             <col className={compactMode ? "w-[52px]" : "w-[64px]"} />
             <col className={compactMode ? "w-[130px]" : "w-[180px]"} />
@@ -230,8 +230,7 @@ export function SessionsTable({
               })
             )}
           </tbody>
-        </table>
-      </div>
+      </AppTable>
       {sortedRows.length > 0 && totalPages > 1 ? (
         <div className="flex items-center justify-between pt-1 text-sm">
           <p className="text-zinc-600">
