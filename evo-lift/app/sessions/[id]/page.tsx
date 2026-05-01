@@ -25,6 +25,7 @@ import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
 import { formatDateOnlyForLocale } from "@/lib/date-format";
 import { toExerciseBadge } from "@/lib/exercise-badge";
+import { exerciseOptionsForPicker } from "@/lib/exercise-picker-options";
 
 type SessionRow = Database["public"]["Tables"]["workout_sessions"]["Row"];
 type SessionExerciseRow = Database["public"]["Tables"]["workout_session_exercises"]["Row"];
@@ -97,7 +98,18 @@ export default function SessionDetailPage() {
   const [isSavingTargets, setIsSavingTargets] = useState(false);
   const [isSmallPhone, setIsSmallPhone] = useState(false);
   const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
+  const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   const maxExerciseNotesLength = 500;
+
+  const addExercisePickerOptions = useMemo(
+    () =>
+      exerciseOptionsForPicker(
+        exerciseOptions,
+        hiddenExerciseIds,
+        addExerciseDraft.exerciseId,
+      ),
+    [exerciseOptions, hiddenExerciseIds, addExerciseDraft.exerciseId],
+  );
 
   function showError(messageText: string) {
     setMessageTone("error");
@@ -239,6 +251,25 @@ function isFutureSessionDate(dateText: string): boolean {
         labels.set(item.id, translated.get(item.id) ?? item.slug);
       }
 
+      const { data: hiddenRows, error: hiddenError } = await supabaseBrowserClient
+        .from("user_hidden_exercises")
+        .select("exercise_id")
+        .eq("user_id", authSession.user.id);
+
+      if (!isMounted) {
+        return;
+      }
+      if (hiddenError) {
+        showError("Could not load exercise visibility.");
+        setIsChecking(false);
+        return;
+      }
+
+      const hiddenSet = new Set<string>();
+      for (const row of hiddenRows ?? []) {
+        hiddenSet.add(row.exercise_id);
+      }
+
       setSession(sessionData);
       setSessionNumber(computedSessionNumber > 0 ? computedSessionNumber : null);
       setSessionExercises(sessionExerciseData ?? []);
@@ -251,6 +282,7 @@ function isFutureSessionDate(dateText: string): boolean {
           slug: item.slug,
         })),
       );
+      setHiddenExerciseIds(hiddenSet);
       setIsChecking(false);
     }
 
@@ -1485,7 +1517,7 @@ function isFutureSessionDate(dateText: string): boolean {
                         className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                       >
                         <option value="">Select exercise</option>
-                        {exerciseOptions.map((option) => (
+                        {addExercisePickerOptions.map((option) => (
                           <option key={option.id} value={option.id}>
                             {option.label} ({toExerciseBadge(option.slug)})
                           </option>
@@ -1754,7 +1786,7 @@ function isFutureSessionDate(dateText: string): boolean {
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                   >
                     <option value="">Select exercise</option>
-                    {exerciseOptions.map((option) => (
+                    {addExercisePickerOptions.map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.label} ({toExerciseBadge(option.slug)})
                       </option>

@@ -11,6 +11,30 @@ export type LanguageCode = "en" | "de";
 export type Database = {
   public: {
     Tables: {
+      app_users: {
+        Row: {
+          id: string;
+          display_name: string | null;
+          preferred_lang_code: LanguageCode;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          display_name?: string | null;
+          preferred_lang_code?: LanguageCode;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          display_name?: string | null;
+          preferred_lang_code?: LanguageCode;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       exercises: {
         Row: {
           id: string;
@@ -50,6 +74,51 @@ export type Database = {
           lang_code?: LanguageCode;
           name?: string;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_hidden_exercises: {
+        Row: {
+          user_id: string;
+          exercise_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          exercise_id: string;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          exercise_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_profile_metrics: {
+        Row: {
+          user_id: string;
+          bodyweight_kg: number | null;
+          height_cm: number | null;
+          birth_year: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          bodyweight_kg?: number | null;
+          height_cm?: number | null;
+          birth_year?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          bodyweight_kg?: number | null;
+          height_cm?: number | null;
+          birth_year?: number | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

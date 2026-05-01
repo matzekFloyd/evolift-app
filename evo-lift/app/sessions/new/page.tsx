@@ -22,6 +22,7 @@ import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
 import type { Database } from "@/lib/supabase/database.types";
 import { toExerciseBadge } from "@/lib/exercise-badge";
+import { exerciseOptionsForPicker } from "@/lib/exercise-picker-options";
 
 function getTodayDateString(): string {
   const now = new Date();
@@ -84,6 +85,7 @@ export default function NewSessionPage() {
   const [messageTone, setMessageTone] = useState<"error" | "success">("error");
   const [isSmallPhone, setIsSmallPhone] = useState(false);
   const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
+  const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   const maxNotesLength = 500;
 
   const trimmedNotes = useMemo(() => notes.trim(), [notes]);
@@ -178,8 +180,29 @@ export default function NewSessionPage() {
         defaultsMap.set(item.exercise_id, item);
       }
 
+      const { data: hiddenRows, error: hiddenError } = await supabaseBrowserClient
+        .from("user_hidden_exercises")
+        .select("exercise_id")
+        .eq("user_id", session.user.id);
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (hiddenError) {
+        showError("Could not load exercise visibility.");
+        setIsChecking(false);
+        return;
+      }
+
+      const hiddenSet = new Set<string>();
+      for (const row of hiddenRows ?? []) {
+        hiddenSet.add(row.exercise_id);
+      }
+
       setExerciseOptions(options);
       setExerciseDefaultsById(defaultsMap);
+      setHiddenExerciseIds(hiddenSet);
       setIsChecking(false);
     }
 
@@ -830,7 +853,11 @@ export default function NewSessionPage() {
                     className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
                   >
                     <option value="">Select exercise</option>
-                    {exerciseOptions.map((option) => (
+                    {exerciseOptionsForPicker(
+                      exerciseOptions,
+                      hiddenExerciseIds,
+                      row.exerciseId,
+                    ).map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.label} ({toExerciseBadge(option.slug)})
                       </option>
@@ -964,7 +991,11 @@ export default function NewSessionPage() {
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                   >
                     <option value="">Select exercise</option>
-                    {exerciseOptions.map((option) => (
+                    {exerciseOptionsForPicker(
+                      exerciseOptions,
+                      hiddenExerciseIds,
+                      row.exerciseId,
+                    ).map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.label} ({toExerciseBadge(option.slug)})
                       </option>
