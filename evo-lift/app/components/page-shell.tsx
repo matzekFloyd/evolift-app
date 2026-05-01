@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppFooter } from "@/app/components/app-footer";
 
 type PageShellProps = {
   children: ReactNode;
@@ -13,6 +14,7 @@ export function PageShell({ children, className }: PageShellProps) {
       }`}
     >
       {children}
+      <AppFooter />
     </main>
   );
 }
