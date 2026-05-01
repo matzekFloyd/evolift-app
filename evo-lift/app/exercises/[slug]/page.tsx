@@ -290,11 +290,11 @@ export default function ExerciseDetailPage() {
   }, [workingRows]);
 
   const topRepsRowKey = useMemo(() => {
-    if (historyRows.length === 0) {
+    if (workingRows.length === 0) {
       return null;
     }
     let selectedRow: ExerciseSetHistoryRow | null = null;
-    for (const row of historyRows) {
+    for (const row of workingRows) {
       if (!selectedRow || row.reps > selectedRow.reps) {
         selectedRow = row;
         continue;
@@ -315,7 +315,7 @@ export default function ExerciseDetailPage() {
       return null;
     }
     return `${selectedRow.sessionId}-${selectedRow.setNumber}`;
-  }, [historyRows]);
+  }, [workingRows]);
 
   const sortedTableRows = useMemo(() => {
     const next = [...historyRows];
