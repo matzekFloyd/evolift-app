@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Dumbbell, Hash, Medal, Weight } from "lucide-react";
+import { ArrowLeft, Dumbbell, Hash, Medal, TrendingUp, Weight } from "lucide-react";
 import { AppTable } from "@/app/components/app-table";
 import { PageShell } from "@/app/components/page-shell";
 import { KpiBadge } from "@/app/components/kpi-badge";
@@ -73,6 +73,34 @@ function isRowEarlier(left: ExerciseSetHistoryRow, right: ExerciseSetHistoryRow)
 
 function normalizeLoadedForComparison(weightKg: number | null): number {
   return weightKg ?? Number.NEGATIVE_INFINITY;
+}
+
+/** Working sets with an explicit logged load (kg), for load-based KPIs. */
+function loggedLoadKg(row: ExerciseSetHistoryRow): number | null {
+  if (row.weightKg == null) {
+    return null;
+  }
+  const w = Number(row.weightKg);
+  return Number.isFinite(w) ? w : null;
+}
+
+/**
+ * Per-set volume (kg) = loaded (kg) × reps; only when load is logged and reps are valid
+ * (matches insights weekly volume: no contribution when weight is null).
+ */
+function setVolumeKg(row: ExerciseSetHistoryRow): number | null {
+  if (!Number.isFinite(row.reps) || row.reps <= 0) {
+    return null;
+  }
+  const loaded = loggedLoadKg(row);
+  if (loaded === null) {
+    return null;
+  }
+  return loaded * row.reps;
+}
+
+function formatKgValue(value: number | null, fractionDigits: number): string {
+  return value == null ? "—" : `${value.toFixed(fractionDigits)} kg`;
 }
 
 export default function ExerciseDetailPage() {
@@ -268,38 +296,44 @@ export default function ExerciseDetailPage() {
     [historyRows],
   );
 
-  const averageLoadedText = useMemo(() => {
-    const loadedValues = workingRows
-      .map((row) => Number(row.weightKg))
-      .filter((value) => Number.isFinite(value));
-    if (loadedValues.length === 0) {
-      return "-";
+  const loadStats = useMemo(() => {
+    const loads = workingRows.map(loggedLoadKg).filter((v): v is number => v !== null);
+    if (loads.length === 0) {
+      return { maxLoaded: null as number | null, avgLoaded: null as number | null };
     }
-    const totalLoaded = loadedValues.reduce((sum, value) => sum + value, 0);
-    const averageLoaded = totalLoaded / loadedValues.length;
-    return `${averageLoaded.toFixed(1)} kg`;
+    return {
+      maxLoaded: Math.max(...loads),
+      avgLoaded: loads.reduce((s, v) => s + v, 0) / loads.length,
+    };
   }, [workingRows]);
 
-  const averageTotalText = useMemo(() => {
-    if (workingRows.length === 0) {
-      return "-";
+  const volumeStats = useMemo(() => {
+    const volumes = workingRows.map(setVolumeKg).filter((v): v is number => v !== null);
+    if (volumes.length === 0) {
+      return { maxTotal: null as number | null, avgTotal: null as number | null };
     }
-    const total = workingRows.reduce((sum, row) => {
-      const value = Number(row.totalKg);
-      return sum + (Number.isFinite(value) ? value : 0);
-    }, 0);
-    return `${(total / workingRows.length).toFixed(1)} kg`;
+    return {
+      maxTotal: Math.max(...volumes),
+      avgTotal: volumes.reduce((s, v) => s + v, 0) / volumes.length,
+    };
   }, [workingRows]);
 
-  const maxLoadedText = useMemo(() => {
-    const loadedValues = workingRows
-      .map((row) => Number(row.weightKg))
-      .filter((value) => Number.isFinite(value));
-    if (loadedValues.length === 0) {
-      return "-";
-    }
-    return `${Math.max(...loadedValues).toFixed(1)} kg`;
-  }, [workingRows]);
+  const maxLoadedText = useMemo(
+    () => formatKgValue(loadStats.maxLoaded, 1),
+    [loadStats.maxLoaded],
+  );
+  const maxTotalText = useMemo(
+    () => formatKgValue(volumeStats.maxTotal, 1),
+    [volumeStats.maxTotal],
+  );
+  const averageLoadedText = useMemo(
+    () => formatKgValue(loadStats.avgLoaded, 1),
+    [loadStats.avgLoaded],
+  );
+  const averageTotalText = useMemo(
+    () => formatKgValue(volumeStats.avgTotal, 1),
+    [volumeStats.avgTotal],
+  );
 
   const topRepsRowKey = useMemo(() => {
     if (workingRows.length === 0) {
@@ -419,32 +453,40 @@ export default function ExerciseDetailPage() {
           </p>
         ) : (
           <>
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <KpiBadge
                 label="Logged sets"
                 value={String(historyRows.length)}
                 icon={<Hash className="h-4 w-4 text-zinc-600" />}
                 tone="neutral"
                 className="sm:min-w-40"
+                description="All sets for this exercise, warmups included."
               />
-              <div className="grid w-full grid-cols-1 gap-2 sm:w-fit sm:grid-cols-3">
+              <div className="grid w-full grid-cols-2 gap-2 sm:w-fit sm:grid-cols-4">
                 <KpiBadge
-                  label="Average loaded"
+                  label="Avg loaded (kg)"
                   value={averageLoadedText}
                   icon={<Weight className="h-4 w-4 text-sky-700" />}
-                  description="Average loaded weight across working sets only."
+                  description="Average loaded weight on working sets (no warmups). Only sets where you logged a weight."
                 />
                 <KpiBadge
-                  label="Average total"
-                  value={averageTotalText}
-                  icon={<Weight className="h-4 w-4 text-sky-700" />}
-                  description="Average of loaded plus base weight across working sets only."
-                />
-                <KpiBadge
-                  label="Max loaded"
+                  label="Max loaded (kg)"
                   value={maxLoadedText}
                   icon={<Weight className="h-4 w-4 text-emerald-700" />}
-                  description="Highest loaded weight reached across working sets only."
+                  description="Heaviest single working set by loaded weight (no warmups). Only sets with logged weight."
+                  tone="success"
+                />
+                <KpiBadge
+                  label="Avg total"
+                  value={averageTotalText}
+                  icon={<TrendingUp className="h-4 w-4 text-sky-700" />}
+                  description="Average weight × reps per working set (no warmups). Skips sets without logged weight or valid reps."
+                />
+                <KpiBadge
+                  label="Max total"
+                  value={maxTotalText}
+                  icon={<TrendingUp className="h-4 w-4 text-emerald-700" />}
+                  description="Best single working set by weight × reps (no warmups). Skips sets without logged weight or valid reps."
                   tone="success"
                 />
               </div>
@@ -493,7 +535,7 @@ export default function ExerciseDetailPage() {
                       </span>
                       {" · "}
                       <span className={isTopRepsRow ? "font-medium text-emerald-900" : ""}>
-                        {row.totalKg.toFixed(1)} total
+                        {row.totalKg.toFixed(1)} kg total
                       </span>
                       {" · "}
                       {row.isWarmup ? "WU" : "WK"}
@@ -528,7 +570,12 @@ export default function ExerciseDetailPage() {
                         </button>
                       </th>
                       <th className="px-2 py-2 font-medium">
-                        <button type="button" onClick={() => handleSort("totalKg")} className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("totalKg")}
+                          className="inline-flex items-center gap-1"
+                          title="Loaded weight plus optional base weight for this exercise on that session."
+                        >
                           Total (kg) {renderSortIndicator("totalKg")}
                         </button>
                       </th>
