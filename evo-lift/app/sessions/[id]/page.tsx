@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -23,6 +24,7 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
 import { CompactStickyBar } from "@/app/components/compact-sticky-bar";
 import { CompactRowActions } from "@/app/components/compact-row-actions";
+import { DateInput } from "@/app/components/date-input";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
@@ -55,6 +57,29 @@ type AddExerciseDraft = {
 };
 
 type MessageTone = "error" | "warning" | "success";
+
+const maxSessionNotesLength = 500;
+
+/** Validates `YYYY-MM-DD` and calendar day (e.g. rejects 2024-02-31). */
+function parseYyyyMmDdDateOnly(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return null;
+  }
+  const [year, month, day] = trimmed.split("-").map(Number);
+  const constructed = new Date(year, month - 1, day);
+  if (
+    constructed.getFullYear() !== year ||
+    constructed.getMonth() !== month - 1 ||
+    constructed.getDate() !== day
+  ) {
+    return null;
+  }
+  return trimmed;
+}
 
 const emptyDraft: SetDraft = {
   reps: "",
@@ -108,6 +133,12 @@ export default function SessionDetailPage() {
   const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
   const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   const maxExerciseNotesLength = 500;
+  const [performedOnDraft, setPerformedOnDraft] = useState("");
+  const [notesDraft, setNotesDraft] = useState("");
+  const [sessionDetailsDateError, setSessionDetailsDateError] = useState<string | null>(null);
+  const [sessionDetailsNotesError, setSessionDetailsNotesError] = useState<string | null>(null);
+  const [isSavingSessionDetails, setIsSavingSessionDetails] = useState(false);
+  const [isEditingSessionDetails, setIsEditingSessionDetails] = useState(false);
 
   const addExercisePickerOptions = useMemo(
     () =>
@@ -118,6 +149,18 @@ export default function SessionDetailPage() {
       ),
     [exerciseOptions, hiddenExerciseIds, addExerciseDraft.exerciseId],
   );
+
+  const sessionDetailsDirty = useMemo(() => {
+    if (!session) {
+      return false;
+    }
+    if (performedOnDraft !== session.performed_on) {
+      return true;
+    }
+    const draftTrim = notesDraft.trim();
+    const sessionTrim = (session.notes ?? "").trim();
+    return draftTrim !== sessionTrim;
+  }, [session, performedOnDraft, notesDraft]);
 
   function showError(messageText: string) {
     setMessageTone("error");
@@ -188,6 +231,13 @@ function isFutureSessionDate(dateText: string): boolean {
       }
       if (sessionError || !sessionData) {
         showError("Could not load workout session.");
+        setIsChecking(false);
+        perf.flush();
+        return;
+      }
+
+      if (sessionData.user_id !== authSession.user.id) {
+        showError("You do not have access to this workout session.");
         setIsChecking(false);
         perf.flush();
         return;
@@ -318,6 +368,10 @@ function isFutureSessionDate(dateText: string): boolean {
       }
 
       setSession(sessionData);
+      setPerformedOnDraft(sessionData.performed_on);
+      setNotesDraft(sessionData.notes ?? "");
+      setSessionDetailsDateError(null);
+      setSessionDetailsNotesError(null);
       setSessionNumber(computedSessionNumber > 0 ? computedSessionNumber : null);
       setSessionExercises(sessionExerciseData ?? []);
       setWorkoutSets(sets);
@@ -344,6 +398,7 @@ function isFutureSessionDate(dateText: string): boolean {
     if (isReadOnly) {
       setEditingSetId(null);
       setEditDraft(emptyDraft);
+      setIsEditingSessionDetails(false);
     }
   }, [isReadOnly]);
 
@@ -758,6 +813,97 @@ function isFutureSessionDate(dateText: string): boolean {
     showSuccess(`Targets updated for ${updatedExerciseLabel}.`);
   }
 
+  function beginEditingSessionDetails() {
+    if (!session) {
+      return;
+    }
+    setPerformedOnDraft(session.performed_on);
+    setNotesDraft(session.notes ?? "");
+    setSessionDetailsDateError(null);
+    setSessionDetailsNotesError(null);
+    setIsEditingSessionDetails(true);
+  }
+
+  function cancelEditingSessionDetails() {
+    if (!session) {
+      setIsEditingSessionDetails(false);
+      return;
+    }
+    setPerformedOnDraft(session.performed_on);
+    setNotesDraft(session.notes ?? "");
+    setSessionDetailsDateError(null);
+    setSessionDetailsNotesError(null);
+    setIsEditingSessionDetails(false);
+  }
+
+  async function saveSessionDetails() {
+    if (!sessionId || !session) {
+      return;
+    }
+
+    setSessionDetailsDateError(null);
+    setSessionDetailsNotesError(null);
+
+    const dateTrimmed = performedOnDraft.trim();
+    if (!dateTrimmed) {
+      setSessionDetailsDateError("Please choose a performed date.");
+      return;
+    }
+    const parsedDate = parseYyyyMmDdDateOnly(dateTrimmed);
+    if (!parsedDate) {
+      setSessionDetailsDateError("Please enter a valid performed date (YYYY-MM-DD).");
+      return;
+    }
+
+    if (workoutSets.length > 0 && isFutureSessionDate(parsedDate)) {
+      setSessionDetailsDateError(
+        "This session already has logged sets. Choose today or an earlier date.",
+      );
+      return;
+    }
+
+    if (notesDraft.length > maxSessionNotesLength) {
+      setSessionDetailsNotesError(
+        `Session notes cannot be longer than ${maxSessionNotesLength} characters.`,
+      );
+      return;
+    }
+
+    const notesTrimmed = notesDraft.trim();
+    const notesPayload = notesTrimmed.length > 0 ? notesTrimmed : null;
+
+    setIsSavingSessionDetails(true);
+    clearMessage();
+
+    const { data, error } = await supabaseBrowserClient
+      .from("workout_sessions")
+      .update({
+        performed_on: parsedDate,
+        notes: notesPayload,
+      })
+      .eq("id", sessionId)
+      .select("id, user_id, performed_on, notes, created_at, updated_at")
+      .single();
+
+    if (error || !data) {
+      const msg = error?.message ?? "Unknown error";
+      if (/row level security|rls|permission denied|violates row-level/i.test(msg)) {
+        showError("You can only update your own workout sessions.");
+      } else {
+        showError(`Could not update session: ${msg}`);
+      }
+      setIsSavingSessionDetails(false);
+      return;
+    }
+
+    setSession(data);
+    setPerformedOnDraft(data.performed_on);
+    setNotesDraft(data.notes ?? "");
+    setIsEditingSessionDetails(false);
+    showSuccess("Session date and notes saved.");
+    setIsSavingSessionDetails(false);
+  }
+
   function goBack() {
     clearMessage();
     if (window.history.length > 1) {
@@ -948,10 +1094,113 @@ function isFutureSessionDate(dateText: string): boolean {
         </div>
       </div>
       <section className="text-sm">
-        {session.notes?.trim() ? (
+        {isReadOnly && session.notes?.trim() ? (
           <p className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
             <span className="font-medium">Notes:</span> {session.notes}
           </p>
+        ) : null}
+        {!isReadOnly ? (
+          <div className="mt-3 space-y-3 rounded-md border border-zinc-200 bg-zinc-50/80 p-4">
+            {!isEditingSessionDetails ? (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-zinc-700">Performed on</p>
+                    <p className="mt-0.5 tabular-nums text-zinc-900">{formattedPerformedOn}</p>
+                  </div>
+                  <div className="flex shrink-0 justify-end">
+                    <button
+                      type="button"
+                      onClick={beginEditingSessionDetails}
+                      disabled={isSavingSessionDetails || isDeletingSession}
+                      className="inline-flex h-8 w-[72px] items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:w-20"
+                    >
+                      <Pencil className="h-3 w-3 text-sky-700" aria-hidden />
+                      Edit
+                    </button>
+                  </div>
+                </div>
+                <div className="text-sm">
+                  <p className="font-medium text-zinc-700">Notes</p>
+                  <p className="mt-0.5 whitespace-pre-wrap text-zinc-900">
+                    {session.notes?.trim() ? (
+                      session.notes
+                    ) : (
+                      <span className="text-zinc-500">None</span>
+                    )}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <label
+                      htmlFor="session-performed-on-edit"
+                      className="mb-1 inline-flex items-center gap-1 text-sm font-medium text-zinc-800"
+                    >
+                      <CalendarDays className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
+                      Performed on
+                    </label>
+                    <DateInput
+                      id="session-performed-on-edit"
+                      value={performedOnDraft}
+                      onChange={(event) => {
+                        setPerformedOnDraft(event.target.value);
+                        setSessionDetailsDateError(null);
+                      }}
+                      className="block w-full max-w-[11rem] rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm md:max-w-xs"
+                    />
+                    {sessionDetailsDateError ? (
+                      <p className="mt-1 text-sm text-red-600" role="alert">
+                        {sessionDetailsDateError}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-2 self-end md:flex-row md:justify-end md:self-start">
+                    <button
+                      type="button"
+                      onClick={() => void saveSessionDetails()}
+                      disabled={
+                        !sessionDetailsDirty || isSavingSessionDetails || isDeletingSession
+                      }
+                      className="inline-flex w-24 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-50 disabled:opacity-60"
+                    >
+                      <Check className="h-3 w-3 text-emerald-600" aria-hidden />
+                      {isSavingSessionDetails ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEditingSessionDetails}
+                      disabled={isSavingSessionDetails}
+                      className="inline-flex w-24 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-50 disabled:opacity-60"
+                    >
+                      <X className="h-3 w-3 text-zinc-500" aria-hidden />
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <NotesTextareaField
+                    label="Session notes (optional)"
+                    value={notesDraft}
+                    onChange={(next) => {
+                      setNotesDraft(next);
+                      setSessionDetailsNotesError(null);
+                    }}
+                    placeholder="Optional notes for this workout"
+                    maxLength={maxSessionNotesLength}
+                    heightClassName="h-28"
+                  />
+                  {sessionDetailsNotesError ? (
+                    <p className="mt-1 text-sm text-red-600" role="alert">
+                      {sessionDetailsNotesError}
+                    </p>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </div>
         ) : null}
         {message ? (
           <StatusNotice message={message} tone={messageTone} onDismiss={clearMessage} className="mt-3" />
