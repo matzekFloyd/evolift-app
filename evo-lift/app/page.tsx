@@ -5,6 +5,7 @@ import { ClipboardList, Dumbbell, FilterX, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/app/components/action-button";
+import { DateInput } from "@/app/components/date-input";
 import { PageShell } from "@/app/components/page-shell";
 import { SessionsTable, type SessionsTableRow } from "@/app/components/sessions-table";
 import { WorkoutActivityChart } from "@/app/components/workout-activity-chart";
@@ -379,8 +380,7 @@ export default function Home() {
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block text-xs font-medium text-zinc-600">
                   From
-                  <input
-                    type="date"
+                  <DateInput
                     value={dateFrom}
                     onChange={(event) => setDateFrom(event.target.value)}
                     max={todayYyyyMmDd}
@@ -389,8 +389,7 @@ export default function Home() {
                 </label>
                 <label className="block text-xs font-medium text-zinc-600">
                   To
-                  <input
-                    type="date"
+                  <DateInput
                     value={dateTo}
                     onChange={(event) => setDateTo(event.target.value)}
                     max={todayYyyyMmDd}
