@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ActionButton } from "@/app/components/action-button";
 import { KpiBadge } from "@/app/components/kpi-badge";
 import { InsightsWeeklyVolumeChart } from "@/app/components/insights-weekly-volume-chart";
+import { DateInput } from "@/app/components/date-input";
 import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -219,8 +220,7 @@ export default function InsightsPage() {
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
             <label className="block text-xs font-medium text-zinc-600">
               From
-              <input
-                type="date"
+              <DateInput
                 value={dateFrom}
                 onChange={(event) => setDateFrom(event.target.value)}
                 max={todayYyyyMmDd}
@@ -229,8 +229,7 @@ export default function InsightsPage() {
             </label>
             <label className="block text-xs font-medium text-zinc-600">
               To
-              <input
-                type="date"
+              <DateInput
                 value={dateTo}
                 onChange={(event) => setDateTo(event.target.value)}
                 max={todayYyyyMmDd}

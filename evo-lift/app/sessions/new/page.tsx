@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { ActionButton } from "@/app/components/action-button";
+import { DateInput } from "@/app/components/date-input";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
@@ -613,8 +614,7 @@ export default function NewSessionPage() {
               <CalendarDays className="h-3.5 w-3.5 text-zinc-500" />
               Performed on
             </span>
-            <input
-              type="date"
+            <DateInput
               required
               value={performedOn}
               onChange={(event) => setPerformedOn(event.target.value)}
