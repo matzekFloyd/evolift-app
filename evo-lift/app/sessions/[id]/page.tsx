@@ -990,14 +990,14 @@ function isFutureSessionDate(dateText: string): boolean {
                 {exerciseSlug ? (
                   <Link
                     href={`/exercises/${exerciseSlug}`}
-                    className="inline-flex min-w-0 items-center gap-2 truncate rounded-sm text-lg font-medium text-zinc-900 underline-offset-2 hover:text-sky-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+                    className="group inline-flex min-w-0 items-center gap-2 truncate rounded-sm text-lg font-medium text-zinc-900 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
                   >
                     {exerciseBadge ? (
-                      <span className="inline-flex h-6 min-w-8 shrink-0 items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-1 text-[10px] font-semibold tracking-wide text-zinc-700">
+                      <span className="inline-flex h-6 min-w-8 shrink-0 items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-1 text-[10px] font-semibold tracking-wide text-zinc-700 transition-colors group-hover:border-sky-300 group-hover:text-sky-800">
                         {exerciseBadge}
                       </span>
                     ) : null}
-                    <span className="truncate">{exerciseLabel}</span>
+                    <span className="truncate underline-offset-2 hover:underline">{exerciseLabel}</span>
                   </Link>
                 ) : (
                   <span className="inline-flex min-w-0 items-center gap-2 truncate text-lg font-medium text-zinc-900">
