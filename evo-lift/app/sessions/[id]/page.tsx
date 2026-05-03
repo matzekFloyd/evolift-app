@@ -1338,8 +1338,8 @@ function isFutureSessionDate(dateText: string): boolean {
           const exerciseSlug = exerciseSlugById.get(sessionExercise.exercise_id);
           const targetParts = [
             sessionExercise.target_sets ? `${sessionExercise.target_sets} sets` : null,
-            sessionExercise.target_reps ? `${sessionExercise.target_reps} reps` : null,
             sessionExercise.target_weight_kg != null ? `${sessionExercise.target_weight_kg} kg` : null,
+            sessionExercise.target_reps ? `${sessionExercise.target_reps} reps` : null,
           ].filter(Boolean) as string[];
 
           const workingSetCount = sets.filter((set) => !set.is_warmup).length;
@@ -1463,16 +1463,6 @@ function isFutureSessionDate(dateText: string): boolean {
                       />
                     </label>
                     <label className="block text-sm font-medium">
-                      Target reps
-                      <input
-                        type="number"
-                        min={1}
-                        value={targetsReps}
-                        onChange={(event) => setTargetsReps(event.target.value)}
-                        className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                      />
-                    </label>
-                    <label className="block text-sm font-medium">
                       Target weight (kg)
                       <input
                         type="number"
@@ -1480,6 +1470,16 @@ function isFutureSessionDate(dateText: string): boolean {
                         step="0.25"
                         value={targetsWeightKg}
                         onChange={(event) => setTargetsWeightKg(event.target.value)}
+                        className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="block text-sm font-medium">
+                      Target reps
+                      <input
+                        type="number"
+                        min={1}
+                        value={targetsReps}
+                        onChange={(event) => setTargetsReps(event.target.value)}
                         className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                       />
                     </label>
@@ -1513,18 +1513,6 @@ function isFutureSessionDate(dateText: string): boolean {
                       <p className="text-xs font-medium text-zinc-600">Set {set.set_number}</p>
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <label className="text-xs font-medium text-zinc-600">
-                          Reps
-                          <input
-                            type="number"
-                            min={1}
-                            value={editDraft.reps}
-                            onChange={(event) =>
-                              setEditDraft((prev) => ({ ...prev, reps: event.target.value }))
-                            }
-                            className="mt-1 w-full rounded-md border bg-white px-2 py-1"
-                          />
-                        </label>
-                        <label className="text-xs font-medium text-zinc-600">
                           Loaded (kg)
                           <input
                             type="number"
@@ -1533,6 +1521,18 @@ function isFutureSessionDate(dateText: string): boolean {
                             value={editDraft.weightKg}
                             onChange={(event) =>
                               setEditDraft((prev) => ({ ...prev, weightKg: event.target.value }))
+                            }
+                            className="mt-1 w-full rounded-md border bg-white px-2 py-1"
+                          />
+                        </label>
+                        <label className="text-xs font-medium text-zinc-600">
+                          Reps
+                          <input
+                            type="number"
+                            min={1}
+                            value={editDraft.reps}
+                            onChange={(event) =>
+                              setEditDraft((prev) => ({ ...prev, reps: event.target.value }))
                             }
                             className="mt-1 w-full rounded-md border bg-white px-2 py-1"
                           />
@@ -1568,9 +1568,9 @@ function isFutureSessionDate(dateText: string): boolean {
                             <div className="min-w-0 truncate text-sm text-zinc-700">
                               <span className="font-medium text-zinc-900">Set {set.set_number}</span>
                               <span className="text-zinc-500"> - </span>
-                              <span>{set.reps} reps</span>
-                              <span className="text-zinc-500">, </span>
                               <span>{set.weight_kg ?? "-"} kg</span>
+                              <span className="text-zinc-500">, </span>
+                              <span>{set.reps} reps</span>
                               <span className="text-zinc-500">, </span>
                               <span>{set.is_warmup ? "Warmup" : "Working"}</span>
                             </div>
@@ -1595,10 +1595,10 @@ function isFutureSessionDate(dateText: string): boolean {
                             <p className="text-xs text-zinc-600">{set.is_warmup ? "Warmup" : "Working"}</p>
                           </div>
                           <p className="mt-1 text-sm">
-                            <span className="font-medium">Reps:</span> {set.reps}
+                            <span className="font-medium">Loaded:</span> {set.weight_kg ?? "-"} kg
                           </p>
                           <p className="text-sm">
-                            <span className="font-medium">Loaded:</span> {set.weight_kg ?? "-"} kg
+                            <span className="font-medium">Reps:</span> {set.reps}
                           </p>
                           <p className="text-xs text-zinc-600">
                             Total: {((set.weight_kg ?? 0) + (sessionExercise.base_weight_kg ?? 0)).toFixed(1)} kg
@@ -1638,52 +1638,11 @@ function isFutureSessionDate(dateText: string): boolean {
                     </p>
                     {lastSet ? (
                       <p className="mt-2 text-[11px] text-zinc-500">
-                        Last set: {lastSet.reps} reps @ {lastSet.weight_kg ?? 0} kg
+                        Last set: {lastSet.weight_kg ?? 0} kg × {lastSet.reps} reps
                         {lastSet.is_warmup ? " (warmup)" : ""}
                       </p>
                     ) : null}
                     <div className="mt-2 grid grid-cols-2 gap-2">
-                      <label className="text-sm font-medium text-zinc-700">
-                        Reps
-                        <input
-                          type="number"
-                          min={1}
-                          value={addDraft.reps}
-                          onChange={(event) =>
-                            updateAddDraft(sessionExercise.id, "reps", event.target.value)
-                          }
-                          className="mt-1 w-full rounded-md border bg-white px-2 py-1"
-                          placeholder="Reps"
-                        />
-                        <div className="mt-1 flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateAddDraft(
-                                sessionExercise.id,
-                                "reps",
-                                String(Math.max(1, Number(addDraft.reps || "1") - 1)),
-                              )
-                            }
-                            className="rounded border px-2 py-0.5 text-xs"
-                          >
-                            -1
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateAddDraft(
-                                sessionExercise.id,
-                                "reps",
-                                String(Math.max(1, Number(addDraft.reps || "0") + 1)),
-                              )
-                            }
-                            className="rounded border px-2 py-0.5 text-xs"
-                          >
-                            +1
-                          </button>
-                        </div>
-                      </label>
                       <label className="text-sm font-medium text-zinc-700">
                         Loaded (kg)
                         <input
@@ -1726,6 +1685,47 @@ function isFutureSessionDate(dateText: string): boolean {
                           </button>
                         </div>
                       </label>
+                      <label className="text-sm font-medium text-zinc-700">
+                        Reps
+                        <input
+                          type="number"
+                          min={1}
+                          value={addDraft.reps}
+                          onChange={(event) =>
+                            updateAddDraft(sessionExercise.id, "reps", event.target.value)
+                          }
+                          className="mt-1 w-full rounded-md border bg-white px-2 py-1"
+                          placeholder="Reps"
+                        />
+                        <div className="mt-1 flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateAddDraft(
+                                sessionExercise.id,
+                                "reps",
+                                String(Math.max(1, Number(addDraft.reps || "1") - 1)),
+                              )
+                            }
+                            className="rounded border px-2 py-0.5 text-xs"
+                          >
+                            -1
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateAddDraft(
+                                sessionExercise.id,
+                                "reps",
+                                String(Math.max(1, Number(addDraft.reps || "0") + 1)),
+                              )
+                            }
+                            className="rounded border px-2 py-0.5 text-xs"
+                          >
+                            +1
+                          </button>
+                        </div>
+                      </label>
                     </div>
                     <label className="mt-2 inline-flex items-center gap-2 text-sm text-zinc-700">
                       <input
@@ -1758,8 +1758,8 @@ function isFutureSessionDate(dateText: string): boolean {
                   <thead>
                     <tr className="border-b bg-zinc-50">
                       <th className="px-2 py-2">Set</th>
-                      <th className="px-2 py-2">Reps</th>
                       <th className="px-2 py-2">Loaded (kg)</th>
+                      <th className="px-2 py-2">Reps</th>
                       <th className="px-2 py-2">Warmup</th>
                       {canManageSets ? <th className="px-2 py-2 text-right">Actions</th> : null}
                     </tr>
@@ -1772,17 +1772,6 @@ function isFutureSessionDate(dateText: string): boolean {
                           <td className="px-2 py-2">
                             <input
                               type="number"
-                              min={1}
-                              value={editDraft.reps}
-                              onChange={(event) =>
-                                setEditDraft((prev) => ({ ...prev, reps: event.target.value }))
-                              }
-                              className="w-20 rounded-md border bg-white px-2 py-1"
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <input
-                              type="number"
                               min={0}
                               step="0.25"
                               value={editDraft.weightKg}
@@ -1790,6 +1779,17 @@ function isFutureSessionDate(dateText: string): boolean {
                                 setEditDraft((prev) => ({ ...prev, weightKg: event.target.value }))
                               }
                               className="w-24 rounded-md border bg-white px-2 py-1"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <input
+                              type="number"
+                              min={1}
+                              value={editDraft.reps}
+                              onChange={(event) =>
+                                setEditDraft((prev) => ({ ...prev, reps: event.target.value }))
+                              }
+                              className="w-20 rounded-md border bg-white px-2 py-1"
                             />
                           </td>
                           <td className="px-2 py-2">
@@ -1832,13 +1832,13 @@ function isFutureSessionDate(dateText: string): boolean {
                       ) : (
                         <tr key={set.id} className="border-b odd:bg-white even:bg-zinc-50/60 hover:bg-zinc-100/60">
                           <td className="px-2 py-2">{set.set_number}</td>
-                          <td className="px-2 py-2">{set.reps}</td>
                           <td className="px-2 py-2">
                             <div>{set.weight_kg ?? "-"}</div>
                             <div className="text-xs text-zinc-500">
                               Total: {((set.weight_kg ?? 0) + (sessionExercise.base_weight_kg ?? 0)).toFixed(1)} kg
                             </div>
                           </td>
+                          <td className="px-2 py-2">{set.reps}</td>
                           <td className="px-2 py-2">{set.is_warmup ? "Yes" : "No"}</td>
                           {canManageSets ? (
                             <td className="px-2 py-2">
@@ -1878,18 +1878,6 @@ function isFutureSessionDate(dateText: string): boolean {
                         <td className="px-2 py-2">
                           <input
                             type="number"
-                            min={1}
-                            value={addDraft.reps}
-                            onChange={(event) =>
-                              updateAddDraft(sessionExercise.id, "reps", event.target.value)
-                            }
-                            className="w-20 rounded-md border bg-white px-2 py-1"
-                            placeholder="Reps"
-                          />
-                        </td>
-                        <td className="px-2 py-2">
-                          <input
-                            type="number"
                             min={0}
                             step="0.25"
                             value={addDraft.weightKg}
@@ -1898,6 +1886,18 @@ function isFutureSessionDate(dateText: string): boolean {
                             }
                             className="w-24 rounded-md border bg-white px-2 py-1"
                             placeholder="Weight"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            type="number"
+                            min={1}
+                            value={addDraft.reps}
+                            onChange={(event) =>
+                              updateAddDraft(sessionExercise.id, "reps", event.target.value)
+                            }
+                            className="w-20 rounded-md border bg-white px-2 py-1"
+                            placeholder="Reps"
                           />
                         </td>
                         <td className="px-2 py-2">
@@ -2025,19 +2025,6 @@ function isFutureSessionDate(dateText: string): boolean {
                       />
                     </label>
                     <label className="block text-sm font-medium">
-                      Target reps
-                      <input
-                        type="number"
-                        min={1}
-                        value={addExerciseDraft.targetReps}
-                        onChange={(event) =>
-                          setAddExerciseDraft((prev) => ({ ...prev, targetReps: event.target.value }))
-                        }
-                        className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                        placeholder="e.g. 8"
-                      />
-                    </label>
-                    <label className="block text-sm font-medium">
                       Target weight (kg)
                       <input
                         type="number"
@@ -2052,6 +2039,19 @@ function isFutureSessionDate(dateText: string): boolean {
                         }
                         className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                         placeholder="e.g. 60"
+                      />
+                    </label>
+                    <label className="block text-sm font-medium">
+                      Target reps
+                      <input
+                        type="number"
+                        min={1}
+                        value={addExerciseDraft.targetReps}
+                        onChange={(event) =>
+                          setAddExerciseDraft((prev) => ({ ...prev, targetReps: event.target.value }))
+                        }
+                        className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                        placeholder="e.g. 8"
                       />
                     </label>
                     <div className="sm:col-span-2">
@@ -2168,16 +2168,6 @@ function isFutureSessionDate(dateText: string): boolean {
                   />
                 </label>
                 <label className="block text-sm font-medium">
-                  Target reps
-                  <input
-                    type="number"
-                    min={1}
-                    value={targetsReps}
-                    onChange={(event) => setTargetsReps(event.target.value)}
-                    className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                  />
-                </label>
-                <label className="block text-sm font-medium">
                   Target weight (kg)
                   <input
                     type="number"
@@ -2185,6 +2175,16 @@ function isFutureSessionDate(dateText: string): boolean {
                     step="0.25"
                     value={targetsWeightKg}
                     onChange={(event) => setTargetsWeightKg(event.target.value)}
+                    className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block text-sm font-medium">
+                  Target reps
+                  <input
+                    type="number"
+                    min={1}
+                    value={targetsReps}
+                    onChange={(event) => setTargetsReps(event.target.value)}
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                   />
                 </label>
@@ -2284,18 +2284,6 @@ function isFutureSessionDate(dateText: string): boolean {
                     />
                   </label>
                   <label className="block text-sm font-medium">
-                    Target reps
-                    <input
-                      type="number"
-                      min={1}
-                      value={addExerciseDraft.targetReps}
-                      onChange={(event) =>
-                        setAddExerciseDraft((prev) => ({ ...prev, targetReps: event.target.value }))
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="block text-sm font-medium">
                     Target weight (kg)
                     <input
                       type="number"
@@ -2304,6 +2292,18 @@ function isFutureSessionDate(dateText: string): boolean {
                       value={addExerciseDraft.targetWeightKg}
                       onChange={(event) =>
                         setAddExerciseDraft((prev) => ({ ...prev, targetWeightKg: event.target.value }))
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Target reps
+                    <input
+                      type="number"
+                      min={1}
+                      value={addExerciseDraft.targetReps}
+                      onChange={(event) =>
+                        setAddExerciseDraft((prev) => ({ ...prev, targetReps: event.target.value }))
                       }
                       className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                     />
