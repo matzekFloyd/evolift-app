@@ -199,7 +199,8 @@ export default function InsightsPage() {
       label: "Volume (kg)",
       value: summary.loadedKg.toFixed(1),
       icon: <Weight className="h-4 w-4 text-zinc-600" />,
-      description: "Total weekly training volume (reps x loaded kg) in the selected filter window.",
+      description:
+        "Total weekly training volume (loaded kg × reps) in the selected filter window.",
     };
   }, [summary.loadedKg, trendMetric, workingSetsTotal]);
 
@@ -357,7 +358,7 @@ export default function InsightsPage() {
                 <>
                   <p className="mt-1 text-xs text-zinc-500">
                     {trendMetric === "volume"
-                      ? "Weekly total volume (reps x loaded kg) with session count in tooltip."
+                      ? "Weekly total volume (loaded kg × reps) with session count in tooltip."
                       : "Weekly non-warmup set count with session count in tooltip."}
                   </p>
                   <div className="mt-3">

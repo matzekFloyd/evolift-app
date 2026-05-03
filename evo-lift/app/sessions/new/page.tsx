@@ -756,8 +756,8 @@ export default function NewSessionPage() {
                         const targetDetails = [
                           row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
                           row.targetSets ? `${row.targetSets} sets` : null,
-                          row.targetReps ? `${row.targetReps} reps` : null,
                           row.targetWeightKg ? `weight ${row.targetWeightKg} kg` : null,
+                          row.targetReps ? `${row.targetReps} reps` : null,
                         ]
                           .filter(Boolean)
                           .join(", ");
@@ -794,8 +794,8 @@ export default function NewSessionPage() {
                           const details = [
                             row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
                             row.targetSets ? `${row.targetSets} sets` : null,
-                            row.targetReps ? `${row.targetReps} reps` : null,
                             row.targetWeightKg ? `weight ${row.targetWeightKg} kg` : null,
+                            row.targetReps ? `${row.targetReps} reps` : null,
                           ]
                             .filter(Boolean)
                             .join(", ");
@@ -911,19 +911,6 @@ export default function NewSessionPage() {
                     />
                   </label>
                   <label className="block text-xs font-medium">
-                    Target reps
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.targetReps}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "targetReps", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
-                      placeholder="e.g. 8"
-                    />
-                  </label>
-                  <label className="block text-xs font-medium">
                     Target weight (kg)
                     <input
                       type="number"
@@ -935,6 +922,19 @@ export default function NewSessionPage() {
                       }
                       className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
                       placeholder="e.g. 60"
+                    />
+                  </label>
+                  <label className="block text-xs font-medium">
+                    Target reps
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.targetReps}
+                      onChange={(event) =>
+                        updateExerciseRow(index, "targetReps", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                      placeholder="e.g. 8"
                     />
                   </label>
                 </div>
@@ -1049,19 +1049,6 @@ export default function NewSessionPage() {
                     />
                   </label>
                   <label className="block text-sm font-medium">
-                    Target reps
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.targetReps}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "targetReps", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                      placeholder="e.g. 8"
-                    />
-                  </label>
-                  <label className="block text-sm font-medium">
                     Target weight (kg)
                     <input
                       type="number"
@@ -1073,6 +1060,19 @@ export default function NewSessionPage() {
                       }
                       className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                       placeholder="e.g. 60"
+                    />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Target reps
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.targetReps}
+                      onChange={(event) =>
+                        updateExerciseRow(index, "targetReps", event.target.value)
+                      }
+                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="e.g. 8"
                     />
                   </label>
                 </div>

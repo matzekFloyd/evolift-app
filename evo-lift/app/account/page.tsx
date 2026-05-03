@@ -877,17 +877,6 @@ export default function AccountPage() {
               />
             </label>
             <label className="block text-sm font-medium">
-              Default target reps
-              <input
-                type="number"
-                min={1}
-                value={defaultTargetReps}
-                onChange={(event) => setDefaultTargetReps(event.target.value)}
-                className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                placeholder="e.g. 8"
-              />
-            </label>
-            <label className="block text-sm font-medium">
               Default target weight (kg)
               <input
                 type="number"
@@ -897,6 +886,17 @@ export default function AccountPage() {
                 onChange={(event) => setDefaultTargetWeightKg(event.target.value)}
                 className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
                 placeholder="e.g. 60"
+              />
+            </label>
+            <label className="block text-sm font-medium">
+              Default target reps
+              <input
+                type="number"
+                min={1}
+                value={defaultTargetReps}
+                onChange={(event) => setDefaultTargetReps(event.target.value)}
+                className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                placeholder="e.g. 8"
               />
             </label>
           </div>
