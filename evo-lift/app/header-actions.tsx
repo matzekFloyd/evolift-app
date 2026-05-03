@@ -4,6 +4,11 @@ import Link from "next/link";
 import { BarChart3, Dumbbell, House, LogOut, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  AppHeaderNavLink,
+  appHeaderNavIconInactiveClassName,
+  appHeaderNavIconInactiveGlyphClassName,
+} from "@/app/components/app-header-nav-link";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 export function HeaderActions() {
@@ -65,62 +70,34 @@ export function HeaderActions() {
           EvoLift
         </Link>
         <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
-          <Link
-            href="/"
-            className={`inline-flex items-center rounded-md p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
-              pathname === "/"
-                ? "bg-sky-700 text-white hover:bg-sky-600"
-                : "bg-white text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
-            }`}
-            title="Home"
-            aria-label="Home"
-          >
-            <House className="h-4 w-4" />
-          </Link>
-          <Link
+          <AppHeaderNavLink href="/" label="Home" isActive={pathname === "/"} icon={House} />
+          <AppHeaderNavLink
             href="/exercises"
-            className={`inline-flex items-center rounded-md p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
-              pathname.startsWith("/exercises")
-                ? "bg-sky-700 text-white hover:bg-sky-600"
-                : "bg-white text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
-            }`}
-            title="Exercises"
-            aria-label="Exercises"
-          >
-            <Dumbbell className="h-4 w-4" />
-          </Link>
-          <Link
+            label="Exercises"
+            isActive={pathname.startsWith("/exercises")}
+            icon={Dumbbell}
+          />
+          <AppHeaderNavLink
             href="/insights"
-            className={`inline-flex items-center rounded-md p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
-              pathname.startsWith("/insights")
-                ? "bg-sky-700 text-white hover:bg-sky-600"
-                : "bg-white text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
-            }`}
-            title="Insights"
-            aria-label="Insights"
-          >
-            <BarChart3 className="h-4 w-4" />
-          </Link>
-          <Link
+            label="Insights"
+            isActive={pathname.startsWith("/insights")}
+            icon={BarChart3}
+          />
+          <AppHeaderNavLink
             href="/account"
-            className={`inline-flex items-center rounded-md p-2 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm ${
-              pathname === "/account"
-                ? "bg-sky-700 text-white hover:bg-sky-600"
-                : "bg-white text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900"
-            }`}
-            title={`Logged in as ${userEmail ?? "unknown user"}`}
-            aria-label="Account"
-          >
-            <UserRound className="h-4 w-4" />
-          </Link>
+            label="Account"
+            isActive={pathname === "/account"}
+            icon={UserRound}
+            title={userEmail ? `Account — ${userEmail}` : "Account"}
+          />
           <button
             type="button"
             onClick={handleAuthClick}
-            className="inline-flex items-center rounded-md bg-zinc-50 p-2 text-xs font-medium text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 sm:text-sm"
+            className={appHeaderNavIconInactiveClassName}
             aria-label="Log out"
             title="Log out"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className={appHeaderNavIconInactiveGlyphClassName} aria-hidden />
           </button>
         </div>
       </nav>
