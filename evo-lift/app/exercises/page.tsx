@@ -10,6 +10,7 @@ import { loadExerciseMetadata } from "@/lib/exercise-metadata-cache";
 import { createPageLoadPerfTracker } from "@/lib/page-load-perf";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { toExerciseBadge } from "@/lib/exercise-badge";
+import { isFutureSessionDate } from "@/lib/session-date";
 
 type ExerciseRow = {
   id: string;
@@ -23,6 +24,7 @@ type TranslationRow = {
 
 type SessionIdRow = {
   id: string;
+  performed_on: string;
 };
 
 type SessionExerciseRow = {
@@ -76,7 +78,7 @@ export default function ExercisesPage() {
         async () =>
           await supabaseBrowserClient
             .from("workout_sessions")
-            .select("id")
+            .select("id, performed_on")
             .eq("user_id", session.user.id),
       );
       if (sessionsError) {
@@ -86,7 +88,9 @@ export default function ExercisesPage() {
         return;
       }
 
-      const sessionIds = ((sessionRows ?? []) as SessionIdRow[]).map((row) => row.id);
+      const sessionIds = ((sessionRows ?? []) as SessionIdRow[])
+        .filter((row) => !isFutureSessionDate(row.performed_on))
+        .map((row) => row.id);
       const exerciseCountById = new Map<string, number>();
       if (sessionIds.length > 0) {
         const { data: sessionExerciseRows, error: sessionExercisesError } = await perf.trackQuery(

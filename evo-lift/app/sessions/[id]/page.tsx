@@ -34,6 +34,7 @@ import { toExerciseBadge } from "@/lib/exercise-badge";
 import { exerciseOptionsForPicker } from "@/lib/exercise-picker-options";
 import { loadExerciseMetadata } from "@/lib/exercise-metadata-cache";
 import { createPageLoadPerfTracker } from "@/lib/page-load-perf";
+import { isFutureSessionDate } from "@/lib/session-date";
 
 type SessionRow = Database["public"]["Tables"]["workout_sessions"]["Row"];
 type SessionExerciseRow = Database["public"]["Tables"]["workout_session_exercises"]["Row"];
@@ -212,12 +213,6 @@ export default function SessionDetailPage() {
   function getReadOnlyStorageKey(currentSessionId: string) {
     return `evolift:session-readonly:${currentSessionId}`;
   }
-
-function isFutureSessionDate(dateText: string): boolean {
-  const today = new Date();
-  const todayYyyyMmDd = `${today.getFullYear()}-${`${today.getMonth() + 1}`.padStart(2, "0")}-${`${today.getDate()}`.padStart(2, "0")}`;
-  return dateText > todayYyyyMmDd;
-}
 
   useEffect(() => {
     let isMounted = true;
