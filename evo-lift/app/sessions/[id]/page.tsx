@@ -1438,6 +1438,8 @@ export default function SessionDetailPage() {
             targetSetsMet &&
             canManageSets &&
             !fullViewExpandAddSetRowIds.has(sessionExercise.id);
+          /** Mobile compact: soft sky emphasis on the add-set card while still working toward target sets. */
+          const compactNewSetPanelHighlight = isCompactView && !targetSetsMet;
 
           const exercisePanelClass = shouldUseSingleExerciseFlow
             ? "min-h-[calc(100vh-24rem)] p-1 text-sm"
@@ -1776,9 +1778,21 @@ export default function SessionDetailPage() {
                       </ActionButton>
                     </div>
                   ) : (
-                    <div className="rounded-md border border-zinc-200 bg-zinc-50/80 p-3 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                      <p className="inline-flex items-center gap-1 text-sm text-zinc-700">
-                        <Plus className="h-3 w-3 text-sky-700" />
+                    <div
+                      className={
+                        compactNewSetPanelHighlight
+                          ? "rounded-md border border-sky-200 bg-sky-50/55 p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                          : "rounded-md border border-zinc-200 bg-zinc-50/80 p-3 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                      }
+                    >
+                      <p
+                        className={
+                          compactNewSetPanelHighlight
+                            ? "inline-flex items-center gap-1 text-sm font-medium text-sky-950"
+                            : "inline-flex items-center gap-1 text-sm text-zinc-700"
+                        }
+                      >
+                        <Plus className="h-3 w-3 text-sky-700" aria-hidden />
                         New set
                       </p>
                       {lastSet ? (
