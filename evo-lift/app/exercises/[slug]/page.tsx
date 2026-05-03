@@ -63,7 +63,7 @@ type HistorySortDirection = "asc" | "desc";
 
 /**
  * Compact history: fixed-ish column widths so dates, loaded (kg), total (kg), and reps line up row to row.
- * Type column is hidden below ~22rem container width so the block avoids horizontal scroll (type stacks above set # in the Set column).
+ * Below ~22rem container width the Type column is hidden; the Set column shows kind icon + set number on one line.
  */
 const COMPACT_HISTORY_GRID =
   "grid grid-cols-[minmax(5.5rem,1fr)_minmax(4rem,5.5rem)_2.75rem_3.25rem_2.125rem] gap-x-1.5 @min-[22rem]:grid-cols-[minmax(5.5rem,1fr)_3.5rem_minmax(1.75rem,2.25rem)_2.75rem_3.25rem_2.125rem]";
@@ -604,8 +604,12 @@ export default function ExerciseDetailPage() {
                           </span>
                           <span className="text-right font-medium tabular-nums text-zinc-900">
                             <span className="hidden @min-[22rem]:inline">{row.setNumber}</span>
-                            <span className="inline-flex flex-col items-end gap-0.5 leading-none @min-[22rem]:hidden">
-                              <SetKindIndicator isWarmup={row.isWarmup} density="compact" />
+                            <span className="inline-flex items-center justify-end gap-0.5 leading-none @min-[22rem]:hidden">
+                              <SetKindIndicator
+                                isWarmup={row.isWarmup}
+                                density="compact"
+                                showLabel={false}
+                              />
                               <span>{row.setNumber}</span>
                             </span>
                           </span>
