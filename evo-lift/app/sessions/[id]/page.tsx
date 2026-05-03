@@ -1149,16 +1149,6 @@ function isFutureSessionDate(dateText: string): boolean {
                 <Trash2 className="h-4 w-4 text-red-600" />
                 {isDeletingSession ? "Deleting..." : "Delete session"}
               </button>
-              {isCompactView ? (
-                <button
-                  type="button"
-                  onClick={() => setIsAddExerciseSheetOpen(true)}
-                  className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-800 hover:border-sky-400 hover:bg-zinc-100 hover:text-zinc-900"
-                >
-                  <Plus className="h-3.5 w-3.5 text-sky-700" />
-                  Add exercise
-                </button>
-              ) : null}
               {isDeleteSessionConfirmOpen ? (
                 <div
                   className={`flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 ${
@@ -2100,19 +2090,19 @@ function isFutureSessionDate(dateText: string): boolean {
             <>
               <button
                 type="button"
-                onClick={() => startTargetsEdit(activeSessionExercise, "sheet")}
-                className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100 sm:px-2.5 sm:text-sm"
-              >
-                <ListChecks className="h-3.5 w-3.5 shrink-0 text-sky-700" aria-hidden />
-                <span className="truncate">Set targets</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setIsAddExerciseSheetOpen(true)}
                 className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100 sm:px-2.5 sm:text-sm"
               >
                 <Plus className="h-3.5 w-3.5 shrink-0 text-sky-700" aria-hidden />
                 <span className="truncate">Add exercise</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => startTargetsEdit(activeSessionExercise, "sheet")}
+                className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100 sm:px-2.5 sm:text-sm"
+              >
+                <ListChecks className="h-3.5 w-3.5 shrink-0 text-sky-700" aria-hidden />
+                <span className="truncate">Set targets</span>
               </button>
               {canManageSets ? (
                 <button
