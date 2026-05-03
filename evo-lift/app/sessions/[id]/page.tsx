@@ -2101,20 +2101,28 @@ function isFutureSessionDate(dateText: string): boolean {
               <button
                 type="button"
                 onClick={() => startTargetsEdit(activeSessionExercise, "sheet")}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100"
+                className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100 sm:px-2.5 sm:text-sm"
               >
-                <ListChecks className="mr-1 h-3.5 w-3.5 text-sky-700" />
-                Set targets
+                <ListChecks className="h-3.5 w-3.5 shrink-0 text-sky-700" aria-hidden />
+                <span className="truncate">Set targets</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddExerciseSheetOpen(true)}
+                className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100 sm:px-2.5 sm:text-sm"
+              >
+                <Plus className="h-3.5 w-3.5 shrink-0 text-sky-700" aria-hidden />
+                <span className="truncate">Add exercise</span>
               </button>
               {canManageSets ? (
                 <button
                   type="button"
                   onClick={() => handleAddSet(activeSessionExercise.id)}
                   disabled={isSavingSet || isPlannedSession}
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.14)] hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
+                  className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-2 text-xs font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.14)] hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:px-2.5 sm:text-sm"
                 >
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  {isSavingSet ? "Adding..." : "Add set"}
+                  <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="truncate">{isSavingSet ? "Adding..." : "Add set"}</span>
                 </button>
               ) : null}
             </>

@@ -22,7 +22,7 @@ export function CompactStickyBar({
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 p-3 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-2">
-        <div className="flex items-center gap-2">{actions}</div>
+        <div className="flex items-stretch gap-1.5 sm:gap-2">{actions}</div>
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
