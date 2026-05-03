@@ -17,9 +17,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
 import { CompactStickyBar } from "@/app/components/compact-sticky-bar";
@@ -96,8 +96,25 @@ const emptyAddExerciseDraft: AddExerciseDraft = {
   notes: "",
 };
 
+/** Query param: `workout_session_exercises.id` for deep-link + reload restore. */
+const SESSION_DETAIL_EXERCISE_QUERY = "ex";
+
+function replaceSessionDetailQuery(
+  router: ReturnType<typeof useRouter>,
+  pathname: string,
+  searchParams: { toString: () => string },
+  mutator: (params: URLSearchParams) => void,
+) {
+  const params = new URLSearchParams(searchParams.toString());
+  mutator(params);
+  const qs = params.toString();
+  router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+}
+
 export default function SessionDetailPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const params = useParams<{ id: string }>();
   const sessionId = params?.id;
 
@@ -131,6 +148,8 @@ export default function SessionDetailPage() {
   const [isSavingTargets, setIsSavingTargets] = useState(false);
   const [isSmallPhone, setIsSmallPhone] = useState(false);
   const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
+  const activeExerciseIndexChangeSourceRef = useRef<"user" | "url">("user");
+  const lastSessionExerciseIdsKeyRef = useRef<string>("");
   const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   const maxExerciseNotesLength = 500;
   const [performedOnDraft, setPerformedOnDraft] = useState("");
@@ -419,6 +438,10 @@ function isFutureSessionDate(dateText: string): boolean {
   }, [hasHydratedReadOnly, isReadOnly, sessionId]);
 
   useEffect(() => {
+    lastSessionExerciseIdsKeyRef.current = "";
+  }, [sessionId]);
+
+  useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
     const apply = () => setIsSmallPhone(mediaQuery.matches);
     apply();
@@ -432,6 +455,109 @@ function isFutureSessionDate(dateText: string): boolean {
       setActiveExerciseIndex(Math.max(0, sessionExercises.length - 1));
     }
   }, [activeExerciseIndex, sessionExercises.length]);
+
+  useEffect(() => {
+    if (isChecking || !sessionId || session?.id !== sessionId) {
+      return;
+    }
+
+    const idsKey = sessionExercises.map((e) => e.id).join(",");
+    const ex = searchParams.get(SESSION_DETAIL_EXERCISE_QUERY);
+
+    if (sessionExercises.length === 0) {
+      if (ex) {
+        replaceSessionDetailQuery(router, pathname, searchParams, (params) => {
+          params.delete(SESSION_DETAIL_EXERCISE_QUERY);
+        });
+      }
+      activeExerciseIndexChangeSourceRef.current = "url";
+      setActiveExerciseIndex(0);
+      lastSessionExerciseIdsKeyRef.current = idsKey;
+      return;
+    }
+
+    const listChanged = lastSessionExerciseIdsKeyRef.current !== idsKey;
+    lastSessionExerciseIdsKeyRef.current = idsKey;
+
+    if (listChanged) {
+      if (ex) {
+        const idx = sessionExercises.findIndex((e) => e.id === ex);
+        if (idx < 0) {
+          activeExerciseIndexChangeSourceRef.current = "url";
+          setActiveExerciseIndex(0);
+          replaceSessionDetailQuery(router, pathname, searchParams, (params) => {
+            params.delete(SESSION_DETAIL_EXERCISE_QUERY);
+          });
+        } else {
+          activeExerciseIndexChangeSourceRef.current = "url";
+          setActiveExerciseIndex(idx);
+        }
+      }
+      return;
+    }
+
+    if (ex) {
+      const idx = sessionExercises.findIndex((e) => e.id === ex);
+      if (idx >= 0) {
+        activeExerciseIndexChangeSourceRef.current = "url";
+        setActiveExerciseIndex(idx);
+      } else {
+        activeExerciseIndexChangeSourceRef.current = "url";
+        setActiveExerciseIndex(0);
+        replaceSessionDetailQuery(router, pathname, searchParams, (params) => {
+          params.delete(SESSION_DETAIL_EXERCISE_QUERY);
+        });
+      }
+    } else {
+      activeExerciseIndexChangeSourceRef.current = "url";
+      setActiveExerciseIndex(0);
+    }
+  }, [isChecking, pathname, router, searchParams, session?.id, sessionExercises, sessionId]);
+
+  useEffect(() => {
+    if (isChecking || !sessionId || session?.id !== sessionId || sessionExercises.length === 0) {
+      return;
+    }
+    if (activeExerciseIndexChangeSourceRef.current === "url") {
+      activeExerciseIndexChangeSourceRef.current = "user";
+      return;
+    }
+
+    const id = sessionExercises[activeExerciseIndex]?.id;
+    if (!id) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    const cur = params.get(SESSION_DETAIL_EXERCISE_QUERY);
+
+    if (activeExerciseIndex === 0) {
+      if (!cur) {
+        return;
+      }
+      params.delete(SESSION_DETAIL_EXERCISE_QUERY);
+    } else {
+      if (cur === id) {
+        return;
+      }
+      params.set(SESSION_DETAIL_EXERCISE_QUERY, id);
+    }
+
+    const qs = params.toString();
+    if (qs === searchParams.toString()) {
+      return;
+    }
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [
+    activeExerciseIndex,
+    isChecking,
+    pathname,
+    router,
+    searchParams,
+    session?.id,
+    sessionExercises,
+    sessionId,
+  ]);
 
   function getSetsForExercise(sessionExerciseId: string) {
     return workoutSets

@@ -19,11 +19,18 @@ When the user’s message is **only** or **primarily** one of the phrases below,
 
 **Trunk detection (for `cm` output):** resolve the default branch name via `git symbolic-ref refs/remotes/origin/HEAD` (e.g. `refs/remotes/origin/master` → `master`), or fall back to **`main`** / **`master`** whichever exists. Compare to `git branch --show-current`.
 
+**Ticket prefix from branch (`EVO-*`):** when producing `cm` output, use the current branch name from `git branch --show-current`. If it contains a ticket id matching **`EVO-` + digits** (first match of the pattern `EVO-\d+`, case-sensitive), prefix the **subject line** with **`[<match>]`** and a space—for example **`[EVO-55]`**. Examples:
+
+- On trunk: `[EVO-55] feat: restore exercise position from URL`
+- Off trunk: `[EVO-55] Restore exercise position from URL`
+
+If the branch name has no such match, omit the prefix. The **≤72 character** limit applies to the **entire** subject line **including** the bracket prefix.
+
 **Output:** One **markdown code block** containing a **proposed git commit message**. If there is nothing to commit for that scope, say so and do not fabricate a message.
 
 ### When the current branch **is** the default trunk (`master` / `main`)
 
-Use a **Conventional Commit–style subject**: **`<type>: <imperative title>`** (≤72 chars for the whole line; lowercase `type`). Pick the best-fitting `type`, for example:
+Use a **Conventional Commit–style subject**: **`<type>: <imperative title>`** (≤72 chars for the whole line; lowercase `type`), **after** any **`[EVO-…]`** prefix when the branch rule above applies—e.g. **`[EVO-55] feat: imperative title`**. Pick the best-fitting `type`, for example:
 
 | `type` | Use for |
 |--------|--------|
@@ -46,7 +53,7 @@ Example shape: `chore: add Cursor rules for agent chat commands` then bullets.
 
 ### When the current branch is **not** the default trunk
 
-Subject line: **imperative mood**, no required `type:` prefix (feature-branch workflow). Blank line, then the same **bullet** body as above.
+Subject line: **imperative mood**, no required `type:` prefix (feature-branch workflow), **after** any **`[EVO-…]`** prefix when the branch rule above applies. Blank line, then the same **bullet** body as above.
 
 ## PR helpers (`pr`)
 
