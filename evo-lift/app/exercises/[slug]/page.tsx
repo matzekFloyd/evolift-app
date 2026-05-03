@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Dumbbell, Hash, Medal, TrendingUp, Weight } from "lucide-react";
 import { AppTable } from "@/app/components/app-table";
 import { PageShell } from "@/app/components/page-shell";
+import { SetKindIndicator } from "@/app/components/set-kind-indicator";
 import { KpiBadge } from "@/app/components/kpi-badge";
 import { StatusNotice } from "@/app/components/status-notice";
 import { loadExerciseMetadata } from "@/lib/exercise-metadata-cache";
@@ -62,12 +63,12 @@ type HistorySortDirection = "asc" | "desc";
 
 /**
  * Compact history: fixed-ish column widths so dates, loaded (kg), total (kg), and reps line up row to row.
- * Warmup column is hidden below ~22rem container width so the block avoids horizontal scroll.
+ * Type column is hidden below ~22rem container width so the block avoids horizontal scroll (type stacks above set # in the Set column).
  */
 const COMPACT_HISTORY_GRID =
-  "grid grid-cols-[minmax(5.5rem,1fr)_1.5rem_2.75rem_3.25rem_2.125rem] gap-x-1.5 @min-[22rem]:grid-cols-[minmax(5.5rem,1fr)_1.5rem_2.75rem_3.25rem_2.125rem_3.5rem]";
+  "grid grid-cols-[minmax(5.5rem,1fr)_minmax(4rem,5.5rem)_2.75rem_3.25rem_2.125rem] gap-x-1.5 @min-[22rem]:grid-cols-[minmax(5.5rem,1fr)_3.5rem_minmax(1.75rem,2.25rem)_2.75rem_3.25rem_2.125rem]";
 
-const COMPACT_HISTORY_WARMUP_CELL = "hidden @min-[22rem]:block";
+const COMPACT_HISTORY_TYPE_CELL = "hidden @min-[22rem]:flex @min-[22rem]:justify-center @min-[22rem]:items-center";
 
 /**
  * Sort exercise set history by session date, then session, then set index.
@@ -558,11 +559,11 @@ export default function ExerciseDetailPage() {
                   className={`${COMPACT_HISTORY_GRID} border-b bg-zinc-50 px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500`}
                 >
                   <span>Date</span>
+                  <span className={COMPACT_HISTORY_TYPE_CELL}>Type</span>
                   <span className="text-right">Set</span>
                   <span className="text-right">Kg</span>
                   <span className="text-right">Total</span>
                   <span className="text-right">Reps</span>
-                  <span className={`text-center ${COMPACT_HISTORY_WARMUP_CELL}`}>Warmup</span>
                 </div>
                 {compactHistoryRows.map((row, index) => (
                   <article
@@ -598,8 +599,15 @@ export default function ExerciseDetailPage() {
                               <span className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
                             )}
                           </div>
+                          <span className={`text-zinc-600 ${COMPACT_HISTORY_TYPE_CELL}`}>
+                            <SetKindIndicator isWarmup={row.isWarmup} density="compact" />
+                          </span>
                           <span className="text-right font-medium tabular-nums text-zinc-900">
-                            {row.setNumber}
+                            <span className="hidden @min-[22rem]:inline">{row.setNumber}</span>
+                            <span className="inline-flex flex-col items-end gap-0.5 leading-none @min-[22rem]:hidden">
+                              <SetKindIndicator isWarmup={row.isWarmup} density="compact" />
+                              <span>{row.setNumber}</span>
+                            </span>
                           </span>
                           <span
                             className={`text-right tabular-nums ${
@@ -622,9 +630,6 @@ export default function ExerciseDetailPage() {
                           >
                             {row.reps}
                           </span>
-                          <span className={`text-center text-zinc-600 ${COMPACT_HISTORY_WARMUP_CELL}`}>
-                            {row.isWarmup ? "Yes" : "No"}
-                          </span>
                         </div>
                       );
                     })()}
@@ -638,6 +643,11 @@ export default function ExerciseDetailPage() {
                       <th className="px-2 py-2 font-medium">
                         <button type="button" onClick={() => handleSort("performedOn")} className="inline-flex items-center gap-1">
                           Session date {renderSortIndicator("performedOn")}
+                        </button>
+                      </th>
+                      <th className="px-2 py-2 font-medium">
+                        <button type="button" onClick={() => handleSort("isWarmup")} className="inline-flex items-center gap-1">
+                          Type {renderSortIndicator("isWarmup")}
                         </button>
                       </th>
                       <th className="px-2 py-2 font-medium">
@@ -663,11 +673,6 @@ export default function ExerciseDetailPage() {
                       <th className="px-2 py-2 font-medium">
                         <button type="button" onClick={() => handleSort("reps")} className="inline-flex items-center gap-1">
                           Reps {renderSortIndicator("reps")}
-                        </button>
-                      </th>
-                      <th className="px-2 py-2 font-medium">
-                        <button type="button" onClick={() => handleSort("isWarmup")} className="inline-flex items-center gap-1">
-                          Warmup {renderSortIndicator("isWarmup")}
                         </button>
                       </th>
                     </tr>
@@ -700,6 +705,9 @@ export default function ExerciseDetailPage() {
                             ) : null}
                           </span>
                         </td>
+                        <td className="px-2 py-2">
+                          <SetKindIndicator isWarmup={row.isWarmup} density="default" />
+                        </td>
                         <td className="px-2 py-2">{row.setNumber}</td>
                         <td className={`px-2 py-2 ${isTopRepsRow ? "font-medium text-emerald-900" : ""}`}>
                           {row.weightKg ?? "-"}
@@ -710,7 +718,6 @@ export default function ExerciseDetailPage() {
                         <td className={`px-2 py-2 ${isTopRepsRow ? "font-medium text-emerald-900" : ""}`}>
                           {row.reps}
                         </td>
-                        <td className="px-2 py-2">{row.isWarmup ? "Yes" : "No"}</td>
                       </tr>
                         );
                       })()

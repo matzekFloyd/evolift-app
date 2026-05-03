@@ -24,6 +24,7 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
 import { CompactStickyBar } from "@/app/components/compact-sticky-bar";
 import { CompactRowActions } from "@/app/components/compact-row-actions";
+import { SetKindIndicator } from "@/app/components/set-kind-indicator";
 import { DateInput } from "@/app/components/date-input";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { PageShell } from "@/app/components/page-shell";
@@ -1546,7 +1547,7 @@ function isFutureSessionDate(dateText: string): boolean {
                             setEditDraft((prev) => ({ ...prev, isWarmup: event.target.checked }))
                           }
                         />
-                        Warmup
+                        Warmup?
                       </label>
                       <div className="mt-3 flex justify-end gap-2">
                         <CompactRowActions
@@ -1565,14 +1566,17 @@ function isFutureSessionDate(dateText: string): boolean {
                       {isCompactView ? (
                         <>
                           <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0 truncate text-sm text-zinc-700">
-                              <span className="font-medium text-zinc-900">Set {set.set_number}</span>
-                              <span className="text-zinc-500"> - </span>
-                              <span>{set.weight_kg ?? "-"} kg</span>
-                              <span className="text-zinc-500">, </span>
-                              <span>{set.reps} reps</span>
-                              <span className="text-zinc-500">, </span>
-                              <span>{set.is_warmup ? "Warmup" : "Working"}</span>
+                            <div className="min-w-0 text-sm text-zinc-700">
+                              <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                                <span className="inline-flex flex-wrap items-center gap-1.5">
+                                  <SetKindIndicator isWarmup={set.is_warmup} density="compact" />
+                                  <span className="font-medium text-zinc-900">Set {set.set_number}</span>
+                                </span>
+                                <span className="text-zinc-500">·</span>
+                                <span>
+                                  {set.weight_kg ?? "-"} kg, {set.reps} reps
+                                </span>
+                              </span>
                             </div>
                             {canManageSets ? (
                               <div className="flex shrink-0 items-center">
@@ -1591,8 +1595,10 @@ function isFutureSessionDate(dateText: string): boolean {
                       ) : (
                         <>
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-medium">Set {set.set_number}</p>
-                            <p className="text-xs text-zinc-600">{set.is_warmup ? "Warmup" : "Working"}</p>
+                            <p className="inline-flex flex-wrap items-center gap-2 text-sm font-medium">
+                              <SetKindIndicator isWarmup={set.is_warmup} density="default" />
+                              <span>Set {set.set_number}</span>
+                            </p>
                           </div>
                           <p className="mt-1 text-sm">
                             <span className="font-medium">Loaded:</span> {set.weight_kg ?? "-"} kg
@@ -1638,8 +1644,12 @@ function isFutureSessionDate(dateText: string): boolean {
                     </p>
                     {lastSet ? (
                       <p className="mt-2 text-[11px] text-zinc-500">
-                        Last set: {lastSet.weight_kg ?? 0} kg × {lastSet.reps} reps
-                        {lastSet.is_warmup ? " (warmup)" : ""}
+                        <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                          <SetKindIndicator isWarmup={lastSet.is_warmup} density="compact" />
+                          <span>
+                            Last set: {lastSet.weight_kg ?? 0} kg × {lastSet.reps} reps
+                          </span>
+                        </span>
                       </p>
                     ) : null}
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1735,7 +1745,7 @@ function isFutureSessionDate(dateText: string): boolean {
                           updateAddDraft(sessionExercise.id, "isWarmup", event.target.checked)
                         }
                       />
-                      Warmup
+                      Warmup?
                     </label>
                     <div className="mt-3 flex justify-end">
                       <button
@@ -1757,10 +1767,10 @@ function isFutureSessionDate(dateText: string): boolean {
                 <table className="w-full min-w-[640px] text-left text-sm">
                   <thead>
                     <tr className="border-b bg-zinc-50">
+                      <th className="px-2 py-2">Type</th>
                       <th className="px-2 py-2">Set</th>
                       <th className="px-2 py-2">Loaded (kg)</th>
                       <th className="px-2 py-2">Reps</th>
-                      <th className="px-2 py-2">Warmup</th>
                       {canManageSets ? <th className="px-2 py-2 text-right">Actions</th> : null}
                     </tr>
                   </thead>
@@ -1768,6 +1778,19 @@ function isFutureSessionDate(dateText: string): boolean {
                     {sets.map((set) =>
                       editingSetId === set.id ? (
                         <tr key={set.id} className="border-b bg-white">
+                          <td className="px-2 py-2">
+                            <label className="inline-flex cursor-pointer items-center gap-2 text-zinc-800">
+                              <input
+                                type="checkbox"
+                                checked={editDraft.isWarmup}
+                                onChange={(event) =>
+                                  setEditDraft((prev) => ({ ...prev, isWarmup: event.target.checked }))
+                                }
+                                className="rounded border-zinc-300 text-sky-700 focus:ring-sky-600"
+                              />
+                              <span className="text-xs">Warmup?</span>
+                            </label>
+                          </td>
                           <td className="px-2 py-2">{set.set_number}</td>
                           <td className="px-2 py-2">
                             <input
@@ -1790,15 +1813,6 @@ function isFutureSessionDate(dateText: string): boolean {
                                 setEditDraft((prev) => ({ ...prev, reps: event.target.value }))
                               }
                               className="w-20 rounded-md border bg-white px-2 py-1"
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <input
-                              type="checkbox"
-                              checked={editDraft.isWarmup}
-                              onChange={(event) =>
-                                setEditDraft((prev) => ({ ...prev, isWarmup: event.target.checked }))
-                              }
                             />
                           </td>
                           {canManageSets ? (
@@ -1831,6 +1845,9 @@ function isFutureSessionDate(dateText: string): boolean {
                         </tr>
                       ) : (
                         <tr key={set.id} className="border-b odd:bg-white even:bg-zinc-50/60 hover:bg-zinc-100/60">
+                          <td className="px-2 py-2">
+                            <SetKindIndicator isWarmup={set.is_warmup} density="compact" />
+                          </td>
                           <td className="px-2 py-2">{set.set_number}</td>
                           <td className="px-2 py-2">
                             <div>{set.weight_kg ?? "-"}</div>
@@ -1839,7 +1856,6 @@ function isFutureSessionDate(dateText: string): boolean {
                             </div>
                           </td>
                           <td className="px-2 py-2">{set.reps}</td>
-                          <td className="px-2 py-2">{set.is_warmup ? "Yes" : "No"}</td>
                           {canManageSets ? (
                             <td className="px-2 py-2">
                               <div className="flex justify-end gap-2">
@@ -1870,6 +1886,19 @@ function isFutureSessionDate(dateText: string): boolean {
                     {canManageSets ? (
                       <tr>
                         <td className="px-2 py-2">
+                          <label className="inline-flex cursor-pointer items-center gap-2 text-zinc-800">
+                            <input
+                              type="checkbox"
+                              checked={addDraft.isWarmup}
+                              onChange={(event) =>
+                                updateAddDraft(sessionExercise.id, "isWarmup", event.target.checked)
+                              }
+                              className="rounded border-zinc-300 text-sky-700 focus:ring-sky-600"
+                            />
+                            <span className="text-xs">Warmup?</span>
+                          </label>
+                        </td>
+                        <td className="px-2 py-2">
                           <span className="inline-flex items-center gap-1 text-xs text-zinc-600">
                             <Plus className="h-3 w-3 text-sky-700" />
                             New
@@ -1898,15 +1927,6 @@ function isFutureSessionDate(dateText: string): boolean {
                             }
                             className="w-20 rounded-md border bg-white px-2 py-1"
                             placeholder="Reps"
-                          />
-                        </td>
-                        <td className="px-2 py-2">
-                          <input
-                            type="checkbox"
-                            checked={addDraft.isWarmup}
-                            onChange={(event) =>
-                              updateAddDraft(sessionExercise.id, "isWarmup", event.target.checked)
-                            }
                           />
                         </td>
                         <td className="px-2 py-2">
