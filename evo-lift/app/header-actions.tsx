@@ -4,7 +4,11 @@ import Link from "next/link";
 import { BarChart3, Dumbbell, House, LogOut, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AppHeaderNavLink } from "@/app/components/app-header-nav-link";
+import {
+  AppHeaderNavLink,
+  appHeaderNavIconInactiveClassName,
+  appHeaderNavIconInactiveGlyphClassName,
+} from "@/app/components/app-header-nav-link";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 export function HeaderActions() {
@@ -89,11 +93,11 @@ export function HeaderActions() {
           <button
             type="button"
             onClick={handleAuthClick}
-            className="inline-flex items-center rounded-md bg-zinc-50 p-2 text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className={appHeaderNavIconInactiveClassName}
             aria-label="Log out"
             title="Log out"
           >
-            <LogOut className="h-4 w-4 shrink-0 text-zinc-700" aria-hidden />
+            <LogOut className={appHeaderNavIconInactiveGlyphClassName} aria-hidden />
           </button>
         </div>
       </nav>

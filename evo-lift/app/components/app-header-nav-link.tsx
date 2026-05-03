@@ -10,6 +10,12 @@ type AppHeaderNavLinkProps = {
   title?: string;
 };
 
+/** Inactive nav icon control (shared by links and e.g. log out) so surfaces stay consistent. */
+export const appHeaderNavIconInactiveClassName =
+  "inline-flex items-center rounded-md bg-white p-2 text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white";
+
+export const appHeaderNavIconInactiveGlyphClassName = "h-4 w-4 shrink-0 text-sky-800";
+
 /**
  * Header nav control (icon only at all breakpoints). Active: filled sky; icon is always
  * explicit `text-white` on active so it cannot inherit the sky focus ring color. Focus:
@@ -27,10 +33,10 @@ export function AppHeaderNavLink({ href, label, isActive, icon: Icon, title: tit
       className={
         isActive
           ? "inline-flex items-center rounded-md bg-sky-700 p-2 text-white hover:bg-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-sky-700"
-          : "inline-flex items-center rounded-md bg-white p-2 text-zinc-700 hover:bg-zinc-200/80 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          : appHeaderNavIconInactiveClassName
       }
     >
-      <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-sky-800"}`} aria-hidden />
+      <Icon className={isActive ? "h-4 w-4 shrink-0 text-white" : appHeaderNavIconInactiveGlyphClassName} aria-hidden />
     </Link>
   );
 }
