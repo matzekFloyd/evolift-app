@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { toExerciseBadge } from "@/lib/exercise-badge";
+import { ExerciseBadgeChip } from "@/app/components/exercise-badge-chip";
 import {
   type ExercisePickerOption,
   filterExercisePickerOptionsByQuery,
@@ -60,10 +60,6 @@ export function ExerciseSearchSelect({
     () => filterExercisePickerOptionsByQuery(options, debouncedSearch),
     [options, debouncedSearch],
   );
-
-  const triggerLabel = selectedOption
-    ? `${selectedOption.label} (${toExerciseBadge(selectedOption.slug)})`
-    : placeholder;
 
   const close = useCallback(() => {
     setOpen(false);
@@ -139,9 +135,14 @@ export function ExerciseSearchSelect({
           }
         }}
       >
-        <span className={`min-w-0 flex-1 truncate ${selectedOption ? "font-normal" : "text-zinc-500"}`}>
-          {triggerLabel}
-        </span>
+        {selectedOption ? (
+          <>
+            <ExerciseBadgeChip slug={selectedOption.slug} />
+            <span className="min-w-0 flex-1 truncate font-normal text-zinc-900">{selectedOption.label}</span>
+          </>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-zinc-500">{placeholder}</span>
+        )}
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden
@@ -193,10 +194,8 @@ export function ExerciseSearchSelect({
                       }`}
                       onClick={() => pick(option.id)}
                     >
+                      <ExerciseBadgeChip slug={option.slug} />
                       <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                      <span className="shrink-0 tabular-nums text-xs text-zinc-500">
-                        {toExerciseBadge(option.slug)}
-                      </span>
                     </button>
                   </li>
                 );

@@ -14,8 +14,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
-import { toExerciseBadge } from "@/lib/exercise-badge";
+import { ExerciseBadgeChip } from "@/app/components/exercise-badge-chip";
 import { approximateAge, validateBodyMetricsInput } from "@/lib/body-metrics";
+import { ExerciseFilteredList } from "@/app/components/exercise-filtered-list";
 import { ExerciseSearchSelect } from "@/app/components/exercise-search-select";
 import { PageShell } from "@/app/components/page-shell";
 import { SegmentedTabs } from "@/app/components/segmented-tabs";
@@ -58,7 +59,6 @@ export default function AccountPage() {
   const [metricsMessage, setMetricsMessage] = useState<string | null>(null);
   const [metricsMessageTone, setMetricsMessageTone] = useState<"error" | "success">("success");
   const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
-  const [hiddenListFilter, setHiddenListFilter] = useState("");
   const [hiddenToggleExerciseId, setHiddenToggleExerciseId] = useState<string | null>(null);
   const [hiddenMessage, setHiddenMessage] = useState<string | null>(null);
   const [hiddenMessageTone, setHiddenMessageTone] = useState<"error" | "success">("error");
@@ -527,17 +527,6 @@ export default function AccountPage() {
       ? approximateAge(birthYearNum, calendarYear)
       : null;
 
-  const filteredExercisesForHiddenList = useMemo(() => {
-    const q = hiddenListFilter.trim().toLowerCase();
-    if (!q) {
-      return exerciseOptions;
-    }
-    return exerciseOptions.filter(
-      (option) =>
-        option.label.toLowerCase().includes(q) || option.slug.toLowerCase().includes(q),
-    );
-  }, [exerciseOptions, hiddenListFilter]);
-
   useEffect(() => {
     setEmailMessage(null);
     setPasswordMessage(null);
@@ -791,28 +780,17 @@ export default function AccountPage() {
             className="mt-3"
           />
         ) : null}
-        <label className="mt-3 block text-sm font-medium">
-          Filter list
-          <input
-            type="search"
-            value={hiddenListFilter}
-            onChange={(event) => setHiddenListFilter(event.target.value)}
-            className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-            placeholder="Search by name or slug"
-          />
-        </label>
-        <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto rounded-md border border-zinc-200 bg-zinc-50/80 p-3">
-          {filteredExercisesForHiddenList.map((option) => {
+        <ExerciseFilteredList
+          items={exerciseOptions}
+          filterLabel="Filter list"
+          renderItem={(option) => {
             const isHidden = hiddenExerciseIds.has(option.id);
             const isBusy = hiddenToggleExerciseId === option.id;
             return (
-              <li
-                key={option.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-transparent bg-white px-2 py-1.5 text-sm"
-              >
-                <span className="min-w-0 truncate">
-                  {option.label}{" "}
-                  <span className="text-zinc-500">({toExerciseBadge(option.slug)})</span>
+              <div className="flex items-center justify-between gap-2 rounded-md border border-transparent bg-white px-2 py-1.5 text-sm">
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <ExerciseBadgeChip slug={option.slug} />
+                  <span className="truncate text-zinc-900">{option.label}</span>
                 </span>
                 <label className="flex shrink-0 items-center gap-2 text-sm text-zinc-700">
                   <input
@@ -825,10 +803,10 @@ export default function AccountPage() {
                   />
                   Hide
                 </label>
-              </li>
+              </div>
             );
-          })}
-        </ul>
+          }}
+        />
         </SettingsSectionBody>
       </SettingsSection>
       <SettingsSection>
