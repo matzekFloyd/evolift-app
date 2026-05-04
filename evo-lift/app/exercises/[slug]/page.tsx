@@ -3,16 +3,29 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Dumbbell, Hash, Medal, TrendingUp, Weight } from "lucide-react";
+import {
+  ArrowLeft,
+  Dumbbell,
+  Hash,
+  LayoutList,
+  LineChart,
+  Medal,
+  TrendingUp,
+  Weight,
+} from "lucide-react";
 import { AppTable } from "@/app/components/app-table";
-import { PageShell } from "@/app/components/page-shell";
-import { SetKindIndicator } from "@/app/components/set-kind-indicator";
+import { ExerciseWeightProgressChart } from "@/app/components/exercise-weight-progress-chart";
+import { InfoPopover } from "@/app/components/info-popover";
 import { KpiBadge } from "@/app/components/kpi-badge";
+import { PageShell } from "@/app/components/page-shell";
+import { SegmentedTabs } from "@/app/components/segmented-tabs";
+import { SetKindIndicator } from "@/app/components/set-kind-indicator";
 import { StatusNotice } from "@/app/components/status-notice";
 import { loadExerciseMetadata } from "@/lib/exercise-metadata-cache";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { formatDateOnlyForLocale } from "@/lib/date-format";
 import { toExerciseBadge } from "@/lib/exercise-badge";
+import { buildExerciseSessionWeightChartPoints } from "@/lib/exercise-session-weight-chart";
 import { createPageLoadPerfTracker } from "@/lib/page-load-perf";
 
 type ExerciseRow = {
@@ -65,6 +78,11 @@ type HistorySortDirection = "asc" | "desc";
  * Compact history: fixed-ish column widths so dates, loaded (kg), total (kg), and reps line up row to row.
  * Below ~22rem container width the Type column is hidden; the Set column shows kind icon + set number on one line.
  */
+/** Prefix for tab / tabpanel ids (`SegmentedTabs` + `role="tabpanel"`). */
+const EXERCISE_DETAIL_A11Y_PREFIX = "exercise-detail";
+
+type ExerciseDetailPanelTab = "data" | "charts";
+
 const COMPACT_HISTORY_GRID =
   "grid grid-cols-[minmax(5.5rem,1fr)_minmax(4rem,5.5rem)_2.75rem_3.25rem_2.125rem] gap-x-1.5 @min-[22rem]:grid-cols-[minmax(5.5rem,1fr)_3.5rem_minmax(1.75rem,2.25rem)_2.75rem_3.25rem_2.125rem]";
 
@@ -175,6 +193,7 @@ export default function ExerciseDetailPage() {
   const [isCompactView, setIsCompactView] = useState(false);
   const [sortKey, setSortKey] = useState<HistorySortKey>("performedOn");
   const [sortDirection, setSortDirection] = useState<HistorySortDirection>("desc");
+  const [detailPanelTab, setDetailPanelTab] = useState<ExerciseDetailPanelTab>("data");
 
   useEffect(() => {
     let isMounted = true;
@@ -384,6 +403,11 @@ export default function ExerciseDetailPage() {
     [sessionSetStats.maxSetsInSession],
   );
 
+  const sessionWeightChartPoints = useMemo(
+    () => buildExerciseSessionWeightChartPoints(historyRows),
+    [historyRows],
+  );
+
   const loadStats = useMemo(() => {
     const loads = workingRows.map(loggedLoadKg).filter((v): v is number => v !== null);
     if (loads.length === 0) {
@@ -541,11 +565,50 @@ export default function ExerciseDetailPage() {
             No sets logged yet for this exercise.
           </p>
         ) : (
-          <>
+          <div className="flex flex-col gap-4">
+            <SegmentedTabs<ExerciseDetailPanelTab>
+              value={detailPanelTab}
+              onChange={setDetailPanelTab}
+              className="w-full"
+              tabListAriaLabel="Exercise detail"
+              a11yIdPrefix={EXERCISE_DETAIL_A11Y_PREFIX}
+              buttonLayout="equal-row"
+              buttonMinWidthClassName="min-w-0"
+              options={[
+                {
+                  value: "data",
+                  label: "Stats & history",
+                  icon: <LayoutList className="h-3.5 w-3.5 shrink-0 text-zinc-600" aria-hidden />,
+                },
+                {
+                  value: "charts",
+                  label: "Charts",
+                  icon: <LineChart className="h-3.5 w-3.5 shrink-0 text-zinc-600" aria-hidden />,
+                },
+              ]}
+            />
+
+            <div
+              id={`${EXERCISE_DETAIL_A11Y_PREFIX}-panel-data`}
+              role="tabpanel"
+              aria-labelledby={`${EXERCISE_DETAIL_A11Y_PREFIX}-tab-data`}
+              hidden={detailPanelTab !== "data"}
+              className="flex flex-col gap-4"
+            >
             {/*
               Narrow: 3–2–2 rows (6-col grid). Mid: neutral row + load/total row (12-col). Wide: one row (7-col).
             */}
-            <div className="@container mb-3">
+            <section
+              className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] sm:p-5"
+              aria-labelledby="exercise-detail-summary-heading"
+            >
+              <h2
+                id="exercise-detail-summary-heading"
+                className="mb-3 text-sm font-semibold text-zinc-900"
+              >
+                Summary
+              </h2>
+            <div className="@container">
               <div className="grid w-full grid-cols-6 gap-2 @min-[28rem]:grid-cols-12 @min-[56rem]:grid-cols-7">
                 <KpiBadge
                   label="Logged sets"
@@ -591,18 +654,34 @@ export default function ExerciseDetailPage() {
                   value={averageTotalText}
                   icon={<TrendingUp className="h-4 w-4 text-sky-700" />}
                   className="col-span-3 min-w-0 @min-[28rem]:col-span-3 @min-[56rem]:col-span-1"
-                  description="Mean of each working set’s Total (kg)—loaded plus base for that session—same column as the table below. No warmups; only sets with logged load."
+                  description="Mean of each working set’s Total (kg)—loaded plus base for that session—same column as in set history. No warmups; only sets with logged load."
                 />
                 <KpiBadge
                   label="Max total (kg)"
                   value={maxTotalText}
                   icon={<TrendingUp className="h-4 w-4 text-emerald-700" />}
                   className="col-span-3 min-w-0 @min-[28rem]:col-span-3 @min-[56rem]:col-span-1"
-                  description="Heaviest single working set by Total (kg) in the table (loaded plus base). No warmups; only sets with logged load."
+                  description="Heaviest single working set by Total (kg) in set history (loaded plus base). No warmups; only sets with logged load."
                   tone="success"
                 />
               </div>
             </div>
+            </section>
+
+            <section
+              className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] sm:p-5"
+              aria-labelledby="exercise-detail-history-heading"
+            >
+              <h2
+                id="exercise-detail-history-heading"
+                className="text-sm font-semibold text-zinc-900"
+              >
+                Set history
+              </h2>
+            <p className="mb-3 mt-1 text-xs text-zinc-600">
+              Each row is one set for this exercise. Open a workout session to edit or review
+              details.
+            </p>
             {isCompactView ? (
               <div className="@container overflow-x-auto rounded-md border border-zinc-200 bg-white">
                 <div
@@ -784,7 +863,49 @@ export default function ExerciseDetailPage() {
                   </tbody>
               </AppTable>
             )}
-          </>
+            </section>
+            </div>
+
+            <div
+              id={`${EXERCISE_DETAIL_A11Y_PREFIX}-panel-charts`}
+              role="tabpanel"
+              aria-labelledby={`${EXERCISE_DETAIL_A11Y_PREFIX}-tab-charts`}
+              hidden={detailPanelTab !== "charts"}
+            >
+            <section
+              className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] sm:p-5"
+              aria-labelledby="exercise-detail-chart-heading"
+            >
+              <div className="flex items-center gap-2">
+                <h2
+                  id="exercise-detail-chart-heading"
+                  className="min-w-0 flex-1 text-sm font-semibold text-zinc-900"
+                >
+                  Weight by session
+                </h2>
+                <InfoPopover label="How this chart works">
+                  <div className="space-y-2">
+                    <p>
+                      Total (kg) matches set history: loaded plus that session’s base for this
+                      exercise. Each point uses the hardest working set that has a logged load (same
+                      idea as your max-total stat).
+                    </p>
+                    <p>
+                      Warmups and sets with no logged weight are omitted. Use Total, Loaded, or
+                      Both for the line; tap or hover a point for loaded, total, and base together.
+                    </p>
+                  </div>
+                </InfoPopover>
+              </div>
+              <div className="mt-3">
+                <ExerciseWeightProgressChart
+                  points={sessionWeightChartPoints}
+                  seriesHint="Heaviest logged working set per session—weight on the bar, including base."
+                />
+              </div>
+            </section>
+            </div>
+          </div>
         )}
       </section>
     </PageShell>

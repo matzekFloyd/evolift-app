@@ -141,3 +141,13 @@ button:disabled {
   outline: none !important;
   box-shadow: none !important;
 }
+
+.exercise-weight-progress-chart .recharts-surface,
+.exercise-weight-progress-chart .recharts-wrapper {
+  outline: none !important;
+}
+
+.exercise-weight-progress-chart :focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
