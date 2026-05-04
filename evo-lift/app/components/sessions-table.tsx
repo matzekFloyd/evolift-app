@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActionButton } from "@/app/components/action-button";
 import { AppTable } from "@/app/components/app-table";
-import { toExerciseBadge } from "@/lib/exercise-badge";
+import { ExerciseBadgeChip } from "@/app/components/exercise-badge-chip";
 import { formatDateOnlyForLocale } from "@/lib/date-format";
 
 type SortKey = "number" | "performed_on";
@@ -192,18 +192,13 @@ export function SessionsTable({
                     <td className="px-2 py-2">
                       <div className="flex flex-wrap items-center gap-1">
                         {row.badges.slice(0, 8).map((item, index) => (
-                          <span
+                          <ExerciseBadgeChip
                             key={`${row.id}-${item.slug}-${index}`}
-                            className={`inline-flex h-6 min-w-8 items-center justify-center rounded border px-1 text-[10px] font-semibold tracking-wide ${
-                              item.hasLoggedSet
-                                ? "border-sky-300 bg-sky-100 text-sky-900"
-                                : "border-zinc-300 bg-zinc-50 text-zinc-700"
-                            }`}
+                            slug={item.slug}
+                            variant={item.hasLoggedSet ? "sessionLogged" : "default"}
                             title={item.slug}
                             aria-label={item.slug}
-                          >
-                            {toExerciseBadge(item.slug)}
-                          </span>
+                          />
                         ))}
                         {row.badges.length === 0 ? <span className="text-zinc-500">-</span> : null}
                       </div>
