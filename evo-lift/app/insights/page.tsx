@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Dumbbell, FilterX, Hash, Weight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/app/components/action-button";
@@ -74,20 +74,26 @@ export default function InsightsPage() {
   const [trendMetric, setTrendMetric] = useState<InsightTrendMetric>("volume");
   const [basePoints, setBasePoints] = useState<WorkoutActivityPoint[]>([]);
   const [weeklyVolumeBase, setWeeklyVolumeBase] = useState<WeeklyVolumePoint[]>([]);
+  const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadData() {
+  const loadInsights = useCallback(
+    async (mode: "initial" | "refresh") => {
       const {
         data: { session },
       } = await supabaseBrowserClient.auth.getSession();
-      if (!isMounted) {
+      if (!isMountedRef.current) {
         return;
       }
       if (!session) {
+        if (mode === "initial") {
+          setIsLoading(false);
+        }
         router.replace("/login");
         return;
+      }
+
+      if (mode === "initial") {
+        setIsLoading(true);
       }
 
       try {
@@ -95,26 +101,52 @@ export default function InsightsPage() {
           loadUserWorkoutActivityBase(supabaseBrowserClient, session.user.id),
           loadUserWeeklyVolumeBase(supabaseBrowserClient, session.user.id),
         ]);
-        if (!isMounted) {
+        if (!isMountedRef.current) {
           return;
         }
         setBasePoints(points);
         setWeeklyVolumeBase(weekly);
-        setIsLoading(false);
+        setErrorMessage(null);
       } catch (error) {
-        if (!isMounted) {
+        if (!isMountedRef.current) {
           return;
         }
         setErrorMessage(error instanceof Error ? error.message : "Could not load insights.");
-        setIsLoading(false);
+      } finally {
+        if (isMountedRef.current && mode === "initial") {
+          setIsLoading(false);
+        }
+      }
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    void loadInsights("initial");
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadInsights]);
+
+  useEffect(() => {
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        void loadInsights("refresh");
       }
     }
-
-    void loadData();
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void loadInsights("refresh");
+      }
+    }
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
-      isMounted = false;
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [router]);
+  }, [loadInsights]);
 
   const rangedPoints = useMemo(
     () => applyInsightsRange(basePoints, selectedRange),
