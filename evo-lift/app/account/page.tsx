@@ -693,12 +693,9 @@ export default function AccountPage() {
       <SettingsSection>
         <SettingsSectionHeader
           title="Body metrics"
+          description="Optional. Enter your current bodyweight and height in kg/cm. These values are saved to your profile and do not change the weights you log in workouts."
           icon={<UserRound className="h-4 w-4 text-zinc-500" />}
         />
-        <p className="mt-1 text-xs text-zinc-600">
-          Optional. Enter your current bodyweight and height in kg/cm. These values are saved to your
-          profile and do not change the weights you log in workouts.
-        </p>
         <SettingsSectionBody>
         <form onSubmit={handleMetricsSave} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -741,29 +738,37 @@ export default function AccountPage() {
                 placeholder="Optional"
               />
               {derivedAge != null ? (
-                <span className="mt-1 block text-xs text-zinc-500">About {derivedAge} years old</span>
+                <span className="mt-1 block text-sm text-zinc-500">About {derivedAge} years old</span>
               ) : null}
             </label>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            {metricsMessage ? (
-              <StatusNotice
-                message={metricsMessage}
-                tone={metricsMessageTone}
-                onDismiss={() => setMetricsMessage(null)}
-                className="sm:flex-1"
-              />
-            ) : (
-              <div className="hidden sm:block sm:flex-1" />
-            )}
-            <button
-              type="submit"
-              disabled={isSavingMetrics}
-              className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
+          <div className="grid gap-3 sm:grid-cols-3 sm:items-start">
+            <div
+              className={
+                metricsMessage
+                  ? "min-w-0 sm:col-span-2"
+                  : "hidden min-h-0 sm:col-span-2 sm:block"
+              }
             >
-              <Save className="h-3.5 w-3.5 text-white" />
-              {isSavingMetrics ? "Saving..." : "Save metrics"}
-            </button>
+              {metricsMessage ? (
+                <StatusNotice
+                  message={metricsMessage}
+                  tone={metricsMessageTone}
+                  onDismiss={() => setMetricsMessage(null)}
+                />
+              ) : null}
+            </div>
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="hidden sm:block" aria-hidden />
+              <button
+                type="submit"
+                disabled={isSavingMetrics}
+                className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
+              >
+                <Save className="h-3.5 w-3.5 text-white" />
+                {isSavingMetrics ? "Saving..." : "Save metrics"}
+              </button>
+            </div>
           </div>
         </form>
         </SettingsSectionBody>
@@ -809,7 +814,7 @@ export default function AccountPage() {
                   {option.label}{" "}
                   <span className="text-zinc-500">({toExerciseBadge(option.slug)})</span>
                 </span>
-                <label className="flex shrink-0 items-center gap-2 text-xs text-zinc-700">
+                <label className="flex shrink-0 items-center gap-2 text-sm text-zinc-700">
                   <input
                     type="checkbox"
                     checked={isHidden}
@@ -829,7 +834,7 @@ export default function AccountPage() {
       <SettingsSection>
         <SettingsSectionHeader
           title="Exercise defaults"
-          description="Set starting values that prefill when you add an exercise to a session. Target counts and reps apply to working sets only (not warmups)."
+          description="Saved per exercise. Values here prefill when you add that exercise to a session."
           icon={<SlidersHorizontal className="h-4 w-4 text-zinc-500" />}
         />
         <SettingsSectionBody>
@@ -858,74 +863,87 @@ export default function AccountPage() {
               />
             </label>
           </div>
-          <p className="text-xs text-zinc-600">
-            Default targets apply to working sets only; warmups do not count.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="block text-sm font-medium">
-              Default target working sets
-              <input
-                type="number"
-                min={1}
-                value={defaultTargetSets}
-                onChange={(event) => setDefaultTargetSets(event.target.value)}
-                className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                placeholder="e.g. 3"
-              />
-            </label>
-            <label className="block text-sm font-medium">
-              Default target weight (kg)
-              <input
-                type="number"
-                min={0}
-                step="0.25"
-                value={defaultTargetWeightKg}
-                onChange={(event) => setDefaultTargetWeightKg(event.target.value)}
-                className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                placeholder="e.g. 60"
-              />
-            </label>
-            <label className="block text-sm font-medium">
-              Default target reps (working sets)
-              <input
-                type="number"
-                min={1}
-                value={defaultTargetReps}
-                onChange={(event) => setDefaultTargetReps(event.target.value)}
-                className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                placeholder="e.g. 8"
-              />
-            </label>
+          <div className="space-y-2 border-t border-zinc-200 pt-3">
+            <h3 className="text-sm font-medium text-zinc-800">Default targets</h3>
+            <p className="text-sm leading-snug text-zinc-600">
+              Targets are your usual sets, weight, and reps for this exercise. Those values are
+              prefilled when you add the exercise to a session.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="block text-sm font-medium">
+                Default target working sets
+                <input
+                  type="number"
+                  min={1}
+                  value={defaultTargetSets}
+                  onChange={(event) => setDefaultTargetSets(event.target.value)}
+                  className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                  placeholder="e.g. 3"
+                />
+              </label>
+              <label className="block text-sm font-medium">
+                Default target weight (kg)
+                <input
+                  type="number"
+                  min={0}
+                  step="0.25"
+                  value={defaultTargetWeightKg}
+                  onChange={(event) => setDefaultTargetWeightKg(event.target.value)}
+                  className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                  placeholder="e.g. 60"
+                />
+              </label>
+              <label className="block text-sm font-medium">
+                Default target reps (working sets)
+                <input
+                  type="number"
+                  min={1}
+                  value={defaultTargetReps}
+                  onChange={(event) => setDefaultTargetReps(event.target.value)}
+                  className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                  placeholder="e.g. 8"
+                />
+              </label>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            {defaultsMessage ? (
-              <StatusNotice
-                message={defaultsMessage}
-                tone={defaultsMessageTone}
-                onDismiss={() => setDefaultsMessage(null)}
-                className="sm:flex-1"
-              />
-            ) : (
-              <div className="hidden sm:block sm:flex-1" />
-            )}
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={handleClearDefaults}
-              disabled={isClearingDefaults || !selectedExerciseId}
-              className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:w-40"
+          <div className="grid gap-3 sm:grid-cols-3 sm:items-start">
+            <div
+              className={
+                defaultsMessage
+                  ? "min-w-0 sm:col-span-2"
+                  : "hidden min-h-0 sm:col-span-2 sm:block"
+              }
             >
-              <Eraser className="h-3.5 w-3.5 text-amber-600" />
-              {isClearingDefaults ? "Clearing..." : "Clear defaults"}
-            </button>
-            <button
-              type="submit"
-              disabled={isSavingDefaults}
-              className="inline-flex h-10 w-full items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:w-40"
-            >
-              <Save className="h-3.5 w-3.5 text-white" />
-              {isSavingDefaults ? "Saving..." : "Save defaults"}
-            </button>
+              {defaultsMessage ? (
+                <StatusNotice
+                  message={defaultsMessage}
+                  tone={defaultsMessageTone}
+                  onDismiss={() => setDefaultsMessage(null)}
+                />
+              ) : null}
+            </div>
+            <div className="grid min-w-0 grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleClearDefaults}
+                disabled={isClearingDefaults || !selectedExerciseId}
+                className="inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-1.5 py-0 text-xs font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60 sm:px-2 sm:text-sm"
+              >
+                <Eraser className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <span className="min-w-0 text-center leading-tight">
+                  {isClearingDefaults ? "Clearing..." : "Clear defaults"}
+                </span>
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingDefaults}
+                className="inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-1.5 py-0 text-xs font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60 sm:px-2 sm:text-sm"
+              >
+                <Save className="h-3.5 w-3.5 shrink-0 text-white" />
+                <span className="min-w-0 text-center leading-tight">
+                  {isSavingDefaults ? "Saving..." : "Save defaults"}
+                </span>
+              </button>
             </div>
           </div>
         </form>
