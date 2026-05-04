@@ -14,6 +14,22 @@ export function getTodayYyyyMmDd(): string {
   return `${year}-${month}-${day}`;
 }
 
+const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * When restoring a new-session browser draft, use the user's local calendar:
+ * invalid or **past** stored dates become today so abandoned drafts do not reopen on an old day.
+ * Future dates (planned sessions) are kept.
+ */
+export function coalesceNewSessionDraftPerformedOn(stored: string): string {
+  const d = normalizeSessionDateOnly(stored.trim());
+  if (!YYYY_MM_DD.test(d)) {
+    return getTodayYyyyMmDd();
+  }
+  const today = getTodayYyyyMmDd();
+  return d < today ? today : d;
+}
+
 /** True when performed_on is after today (planned), consistent with session detail "Planned" and home. */
 export function isFutureSessionDate(performedOn: string): boolean {
   return normalizeSessionDateOnly(performedOn) > getTodayYyyyMmDd();

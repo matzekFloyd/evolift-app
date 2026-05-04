@@ -13,7 +13,7 @@ import {
   Plus,
   Play,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { ActionButton } from "@/app/components/action-button";
@@ -24,14 +24,7 @@ import { StatusNotice } from "@/app/components/status-notice";
 import type { Database } from "@/lib/supabase/database.types";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 import { exerciseOptionsForPicker } from "@/lib/exercise-picker-options";
-
-function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = `${now.getMonth() + 1}`.padStart(2, "0");
-  const day = `${now.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+import { getTodayYyyyMmDd } from "@/lib/session-date";
 
 const NEW_SESSION_DRAFT_KEY = "evolift:new-session-draft";
 
@@ -65,7 +58,8 @@ export default function NewSessionPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [performedOn, setPerformedOn] = useState(getTodayDateString);
+  /** Start empty for SSR/client match; local "today" is applied in useLayoutEffect before paint. */
+  const [performedOn, setPerformedOn] = useState("");
   const [notes, setNotes] = useState("");
   const [isSessionNotesExpanded, setIsSessionNotesExpanded] = useState(false);
   const [exerciseOptions, setExerciseOptions] = useState<
@@ -110,7 +104,7 @@ export default function NewSessionPage() {
   }
 
   function resetDraftState() {
-    setPerformedOn(getTodayDateString());
+    setPerformedOn(getTodayYyyyMmDd());
     setNotes("");
     setIsSessionNotesExpanded(false);
     setExerciseRows([{ ...emptyExerciseRow }]);
@@ -214,51 +208,13 @@ export default function NewSessionPage() {
     };
   }, [router]);
 
+  useLayoutEffect(() => {
+    setPerformedOn((current) => (current ? current : getTodayYyyyMmDd()));
+  }, []);
+
+  /** Draft restore from localStorage is deferred to a follow-up (resume / discard UI). Autosave still runs below. */
   useEffect(() => {
-    if (!userId) {
-      return;
-    }
-
-    try {
-      const raw = window.localStorage.getItem(getDraftStorageKey(userId));
-      if (!raw) {
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as Partial<NewSessionDraft>;
-      if (parsed.performedOn) {
-        setPerformedOn(parsed.performedOn);
-      }
-      if (typeof parsed.notes === "string") {
-        setNotes(parsed.notes);
-        setIsSessionNotesExpanded(parsed.notes.trim().length > 0);
-      }
-      if (Array.isArray(parsed.exerciseRows) && parsed.exerciseRows.length > 0) {
-        const preExpanded = new Set<number>();
-        parsed.exerciseRows.forEach((row, index) => {
-          if (typeof row.notes === "string" && row.notes.trim().length > 0) {
-            preExpanded.add(index);
-          }
-        });
-        setExerciseRows(
-          parsed.exerciseRows.map((row) => ({
-            exerciseId: row.exerciseId ?? "",
-            baseWeightKg: row.baseWeightKg ?? "",
-            targetSets: row.targetSets ?? "",
-            targetReps: row.targetReps ?? "",
-            targetWeightKg: row.targetWeightKg ?? "",
-            notes: row.notes ?? "",
-          })),
-        );
-        setExpandedExerciseNotes(preExpanded);
-      }
-    } catch {
-      // Ignore invalid local draft payloads.
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId || isChecking) {
+    if (!userId || isChecking || !performedOn) {
       return;
     }
 
