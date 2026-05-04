@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { ActionButton } from "@/app/components/action-button";
 import { DateInput } from "@/app/components/date-input";
+import { ExerciseSearchSelect } from "@/app/components/exercise-search-select";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
@@ -802,23 +803,18 @@ export default function NewSessionPage() {
                     <ListChecks className="h-3 w-3 text-zinc-500" />
                     Exercise
                   </span>
-                  <select
+                  <ExerciseSearchSelect
                     required
-                    value={row.exerciseId}
-                    onChange={(event) => handleExerciseSelect(index, event.target.value)}
-                    className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
-                  >
-                    <option value="">Select exercise</option>
-                    {exerciseOptionsForPicker(
+                    size="compact"
+                    className="mt-1 w-full"
+                    options={exerciseOptionsForPicker(
                       exerciseOptions,
                       hiddenExerciseIds,
                       row.exerciseId,
-                    ).map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label} ({toExerciseBadge(option.slug)})
-                      </option>
-                    ))}
-                  </select>
+                    )}
+                    value={row.exerciseId}
+                    onChange={(exerciseId) => handleExerciseSelect(index, exerciseId)}
+                  />
                 </label>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <label className="block text-xs font-medium">
@@ -943,23 +939,17 @@ export default function NewSessionPage() {
                     <ListChecks className="h-3.5 w-3.5 text-zinc-500" />
                     Exercise
                   </span>
-                  <select
+                  <ExerciseSearchSelect
                     required
-                    value={row.exerciseId}
-                    onChange={(event) => handleExerciseSelect(index, event.target.value)}
-                    className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                  >
-                    <option value="">Select exercise</option>
-                    {exerciseOptionsForPicker(
+                    className="mt-1 w-full"
+                    options={exerciseOptionsForPicker(
                       exerciseOptions,
                       hiddenExerciseIds,
                       row.exerciseId,
-                    ).map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label} ({toExerciseBadge(option.slug)})
-                      </option>
-                    ))}
-                  </select>
+                    )}
+                    value={row.exerciseId}
+                    onChange={(exerciseId) => handleExerciseSelect(index, exerciseId)}
+                  />
                 </label>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <p className="text-xs leading-snug text-zinc-500 sm:col-span-2 lg:col-span-4">

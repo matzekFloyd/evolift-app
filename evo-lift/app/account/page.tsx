@@ -16,6 +16,7 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/database.types";
 import { toExerciseBadge } from "@/lib/exercise-badge";
 import { approximateAge, validateBodyMetricsInput } from "@/lib/body-metrics";
+import { ExerciseSearchSelect } from "@/app/components/exercise-search-select";
 import { PageShell } from "@/app/components/page-shell";
 import { SegmentedTabs } from "@/app/components/segmented-tabs";
 import { SettingsSection, SettingsSectionBody } from "@/app/components/settings-section";
@@ -836,19 +837,13 @@ export default function AccountPage() {
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="block text-sm font-medium">
               Exercise
-              <select
+              <ExerciseSearchSelect
                 required
+                className="mt-1 w-full"
+                options={exerciseOptions}
                 value={selectedExerciseId}
-                onChange={(event) => setSelectedExerciseId(event.target.value)}
-                className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-              >
-                <option value="">Select exercise</option>
-                {exerciseOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label} ({toExerciseBadge(option.slug)})
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedExerciseId}
+              />
             </label>
             <label className="block text-sm font-medium">
               Default base weight (kg)
