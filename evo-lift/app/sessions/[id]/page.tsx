@@ -91,6 +91,70 @@ const emptyDraft: SetDraft = {
   isWarmup: false,
 };
 
+/** Most recent working (non-warmup) set in `set_number` order. */
+function findLastWorkingSet(setsSorted: WorkoutSetRow[]): WorkoutSetRow | null {
+  for (let i = setsSorted.length - 1; i >= 0; i -= 1) {
+    const row = setsSorted[i];
+    if (row && !row.is_warmup) {
+      return row;
+    }
+  }
+  return null;
+}
+
+/** Session exercise targets only; omit fields not set on the row (no guesses). */
+function targetPrefillStringsFromSessionExercise(
+  sessionExercise: SessionExerciseRow,
+): { reps: string; weightKg: string } {
+  const reps =
+    sessionExercise.target_reps != null &&
+    sessionExercise.target_reps > 0 &&
+    Number.isFinite(sessionExercise.target_reps)
+      ? String(sessionExercise.target_reps)
+      : "";
+  const weightKg =
+    sessionExercise.target_weight_kg != null &&
+    Number.isFinite(Number(sessionExercise.target_weight_kg))
+      ? String(sessionExercise.target_weight_kg)
+      : "";
+  return { reps, weightKg };
+}
+
+/**
+ * Add-set defaults: targets when no working set exists yet; otherwise last working set.
+ * Warmup rows never supply weight/reps for the next row. `partialDraft` preserves user edits.
+ * When set 1 is working, the next set copies from that row (last working), not stale targets alone.
+ */
+function resolveSuggestedAddDraft(
+  sessionExercise: SessionExerciseRow | undefined,
+  setsSorted: WorkoutSetRow[],
+  partialDraft: Partial<SetDraft> | undefined,
+): SetDraft {
+  const lastWorking = findLastWorkingSet(setsSorted);
+  const targets = sessionExercise
+    ? targetPrefillStringsFromSessionExercise(sessionExercise)
+    : { reps: "", weightKg: "" };
+
+  const reps =
+    partialDraft?.reps !== undefined
+      ? partialDraft.reps
+      : lastWorking
+        ? String(lastWorking.reps)
+        : targets.reps;
+  const weightKg =
+    partialDraft?.weightKg !== undefined
+      ? partialDraft.weightKg
+      : lastWorking
+        ? lastWorking.weight_kg == null
+          ? ""
+          : String(lastWorking.weight_kg)
+        : targets.weightKg;
+  const isWarmup =
+    partialDraft?.isWarmup !== undefined ? partialDraft.isWarmup : false;
+
+  return { reps, weightKg, isWarmup };
+}
+
 const emptyAddExerciseDraft: AddExerciseDraft = {
   exerciseId: "",
   baseWeightKg: "",
@@ -130,7 +194,7 @@ export default function SessionDetailPage() {
   const [workoutSets, setWorkoutSets] = useState<WorkoutSetRow[]>([]);
   const [sessionNumber, setSessionNumber] = useState<number | null>(null);
   const [exerciseLabels, setExerciseLabels] = useState<Map<string, string>>(new Map());
-  const [addDrafts, setAddDrafts] = useState<Record<string, SetDraft>>({});
+  const [addDrafts, setAddDrafts] = useState<Record<string, Partial<SetDraft>>>({});
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<SetDraft>(emptyDraft);
   const [isSavingSet, setIsSavingSet] = useState(false);
@@ -638,7 +702,7 @@ export default function SessionDetailPage() {
     setAddDrafts((prev) => ({
       ...prev,
       [sessionExerciseId]: {
-        ...(prev[sessionExerciseId] ?? emptyDraft),
+        ...prev[sessionExerciseId],
         [key]: value,
       },
     }));
@@ -653,18 +717,12 @@ export default function SessionDetailPage() {
   }
 
   function getResolvedAddDraft(sessionExerciseId: string): SetDraft {
-    const existingDraft = addDrafts[sessionExerciseId];
-    const draft = existingDraft ?? emptyDraft;
-    const lastSet = getLastSet(sessionExerciseId);
-    if (!lastSet) {
-      return draft;
-    }
-    return {
-      reps: draft.reps || String(lastSet.reps),
-      weightKg:
-        draft.weightKg || (lastSet.weight_kg == null ? "" : String(lastSet.weight_kg)),
-      isWarmup: existingDraft ? draft.isWarmup : lastSet.is_warmup,
-    };
+    const sessionExercise = sessionExercises.find((e) => e.id === sessionExerciseId);
+    return resolveSuggestedAddDraft(
+      sessionExercise,
+      getSetsForExercise(sessionExerciseId),
+      addDrafts[sessionExerciseId],
+    );
   }
 
   async function handleAddSet(sessionExerciseId: string) {
@@ -712,14 +770,14 @@ export default function SessionDetailPage() {
     }
 
     setWorkoutSets((prev) => [...prev, data]);
-    // Keep the last logged values as defaults so phone logging is mostly tap-based.
+    const sessionExercise = sessionExercises.find((e) => e.id === sessionExerciseId);
+    const mergedForExercise = [...getSetsForExercise(sessionExerciseId), data].sort(
+      (a, b) => a.set_number - b.set_number,
+    );
+    const nextSuggested = resolveSuggestedAddDraft(sessionExercise, mergedForExercise, undefined);
     setAddDrafts((prev) => ({
       ...prev,
-      [sessionExerciseId]: {
-        reps: String(data.reps),
-        weightKg: data.weight_kg == null ? "" : String(data.weight_kg),
-        isWarmup: data.is_warmup,
-      },
+      [sessionExerciseId]: nextSuggested,
     }));
     const exerciseLabel = getExerciseLabelForSessionExerciseId(sessionExerciseId);
     showSuccess(`Set ${data.set_number} added for ${exerciseLabel}.`);
@@ -790,7 +848,28 @@ export default function SessionDetailPage() {
 
     setWorkoutSets((prev) => prev.filter((set) => set.id !== setId));
     if (deletedSet) {
-      const exerciseLabel = getExerciseLabelForSessionExerciseId(deletedSet.session_exercise_id);
+      const sessionExerciseId = deletedSet.session_exercise_id;
+      const setsBefore = workoutSets
+        .filter((s) => s.session_exercise_id === sessionExerciseId)
+        .sort((a, b) => a.set_number - b.set_number);
+      const setsAfter = setsBefore.filter((s) => s.id !== setId);
+      const sessionExercise = sessionExercises.find((e) => e.id === sessionExerciseId);
+      const autoBefore = resolveSuggestedAddDraft(sessionExercise, setsBefore, undefined);
+      const autoAfter = resolveSuggestedAddDraft(sessionExercise, setsAfter, undefined);
+      const addDefaultsChanged =
+        autoBefore.reps !== autoAfter.reps ||
+        autoBefore.weightKg !== autoAfter.weightKg ||
+        autoBefore.isWarmup !== autoAfter.isWarmup;
+
+      if (addDefaultsChanged) {
+        setAddDrafts((prev) => {
+          const next = { ...prev };
+          delete next[sessionExerciseId];
+          return next;
+        });
+      }
+
+      const exerciseLabel = getExerciseLabelForSessionExerciseId(sessionExerciseId);
       showSuccess(`Set ${deletedSet.set_number} deleted from ${exerciseLabel}.`);
     } else {
       showSuccess("Set deleted.");
