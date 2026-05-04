@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ClipboardList, Dumbbell, FilterX, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActionButton } from "@/app/components/action-button";
 import { DateInput } from "@/app/components/date-input";
@@ -87,6 +87,7 @@ export default function Home() {
     Map<string, SessionExerciseBadge[]>
   >(new Map());
   const [setCountBySessionId, setSetCountBySessionId] = useState<Map<string, number>>(new Map());
+  const reloadHomeSessionsRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let isMounted = true;
@@ -216,12 +217,35 @@ export default function Home() {
       setIsChecking(false);
     }
 
+    reloadHomeSessionsRef.current = () => {
+      void checkSession();
+    };
+
     void checkSession();
 
     return () => {
       isMounted = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        reloadHomeSessionsRef.current();
+      }
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        reloadHomeSessionsRef.current();
+      }
+    }
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   const sessionNumberById = useMemo(() => {
     const byCreatedAtAsc = [...sessions].sort(
