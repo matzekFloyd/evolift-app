@@ -355,6 +355,35 @@ export default function ExerciseDetailPage() {
     [historyRows],
   );
 
+  /** Per workout session: how many rows (sets) for this exercise, warmups included—matches “Logged sets” grain. */
+  const sessionSetStats = useMemo(() => {
+    const bySession = new Map<string, number>();
+    for (const row of historyRows) {
+      bySession.set(row.sessionId, (bySession.get(row.sessionId) ?? 0) + 1);
+    }
+    const counts = [...bySession.values()];
+    if (counts.length === 0) {
+      return { avgSetsPerSession: null as number | null, maxSetsInSession: null as number | null };
+    }
+    return {
+      avgSetsPerSession: counts.reduce((s, n) => s + n, 0) / counts.length,
+      maxSetsInSession: Math.max(...counts),
+    };
+  }, [historyRows]);
+
+  const avgSetsText = useMemo(
+    () =>
+      sessionSetStats.avgSetsPerSession == null
+        ? "—"
+        : sessionSetStats.avgSetsPerSession.toFixed(1),
+    [sessionSetStats.avgSetsPerSession],
+  );
+  const maxSetsText = useMemo(
+    () =>
+      sessionSetStats.maxSetsInSession == null ? "—" : String(sessionSetStats.maxSetsInSession),
+    [sessionSetStats.maxSetsInSession],
+  );
+
   const loadStats = useMemo(() => {
     const loads = workingRows.map(loggedLoadKg).filter((v): v is number => v !== null);
     if (loads.length === 0) {
@@ -513,26 +542,47 @@ export default function ExerciseDetailPage() {
           </p>
         ) : (
           <>
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <KpiBadge
-                label="Logged sets"
-                value={String(historyRows.length)}
-                icon={<Hash className="h-4 w-4 text-zinc-600" />}
-                tone="neutral"
-                className="sm:min-w-36"
-                description="All sets for this exercise, warmups included."
-              />
-              <div className="grid w-full grid-cols-2 gap-2 sm:w-fit sm:grid-cols-4">
+            {/*
+              Narrow: 3–2–2 rows (6-col grid). Mid: neutral row + load/total row (12-col). Wide: one row (7-col).
+            */}
+            <div className="@container mb-3">
+              <div className="grid w-full grid-cols-6 gap-2 @min-[28rem]:grid-cols-12 @min-[56rem]:grid-cols-7">
+                <KpiBadge
+                  label="Logged sets"
+                  value={String(historyRows.length)}
+                  icon={<Hash className="h-4 w-4 text-zinc-600" />}
+                  tone="neutral"
+                  className="col-span-2 min-w-0 @min-[28rem]:col-span-4 @min-[56rem]:col-span-1"
+                  description="All sets for this exercise, warmups included."
+                />
+                <KpiBadge
+                  label="Avg sets"
+                  value={avgSetsText}
+                  icon={<Hash className="h-4 w-4 text-zinc-600" />}
+                  tone="neutral"
+                  className="col-span-2 min-w-0 @min-[28rem]:col-span-4 @min-[56rem]:col-span-1"
+                  description="Average sets per workout session for this exercise, warmups included."
+                />
+                <KpiBadge
+                  label="Max sets"
+                  value={maxSetsText}
+                  icon={<Hash className="h-4 w-4 text-zinc-600" />}
+                  tone="neutral"
+                  className="col-span-2 min-w-0 @min-[28rem]:col-span-4 @min-[56rem]:col-span-1"
+                  description="Most sets logged in one workout session for this exercise, warmups included."
+                />
                 <KpiBadge
                   label="Avg loaded (kg)"
                   value={averageLoadedText}
                   icon={<Weight className="h-4 w-4 text-sky-700" />}
+                  className="col-span-3 min-w-0 @min-[28rem]:col-span-3 @min-[56rem]:col-span-1"
                   description="Average loaded weight on working sets (no warmups). Only sets where you logged a weight."
                 />
                 <KpiBadge
                   label="Max loaded (kg)"
                   value={maxLoadedText}
                   icon={<Weight className="h-4 w-4 text-emerald-700" />}
+                  className="col-span-3 min-w-0 @min-[28rem]:col-span-3 @min-[56rem]:col-span-1"
                   description="Heaviest single working set by loaded weight (no warmups). Only sets with logged weight."
                   tone="success"
                 />
@@ -540,12 +590,14 @@ export default function ExerciseDetailPage() {
                   label="Avg total (kg)"
                   value={averageTotalText}
                   icon={<TrendingUp className="h-4 w-4 text-sky-700" />}
+                  className="col-span-3 min-w-0 @min-[28rem]:col-span-3 @min-[56rem]:col-span-1"
                   description="Mean of each working set’s Total (kg)—loaded plus base for that session—same column as the table below. No warmups; only sets with logged load."
                 />
                 <KpiBadge
                   label="Max total (kg)"
                   value={maxTotalText}
                   icon={<TrendingUp className="h-4 w-4 text-emerald-700" />}
+                  className="col-span-3 min-w-0 @min-[28rem]:col-span-3 @min-[56rem]:col-span-1"
                   description="Heaviest single working set by Total (kg) in the table (loaded plus base). No warmups; only sets with logged load."
                   tone="success"
                 />
