@@ -247,17 +247,6 @@ export default function Home() {
     };
   }, []);
 
-  const sessionNumberById = useMemo(() => {
-    const byCreatedAtAsc = [...sessions].sort(
-      (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at),
-    );
-    const numberMap = new Map<string, number>();
-    byCreatedAtAsc.forEach((session, index) => {
-      numberMap.set(session.id, index + 1);
-    });
-    return numberMap;
-  }, [sessions]);
-
   const completedSessions = useMemo(
     () => sessions.filter((session) => normalizeDateOnly(session.performed_on) <= todayYyyyMmDd),
     [sessions, todayYyyyMmDd],
@@ -338,26 +327,24 @@ export default function Home() {
     () =>
       filteredSessions.map((session) => ({
         id: session.id,
-        number: sessionNumberById.get(session.id) ?? 0,
         performedOn: session.performed_on,
         notes: session.notes ?? "",
         isPlanned: false,
         badges: exerciseBadgesBySessionId.get(session.id) ?? [],
       })),
-    [exerciseBadgesBySessionId, filteredSessions, sessionNumberById],
+    [exerciseBadgesBySessionId, filteredSessions],
   );
 
   const plannedTableRows: SessionsTableRow[] = useMemo(
     () =>
       plannedSessions.map((session) => ({
         id: session.id,
-        number: sessionNumberById.get(session.id) ?? 0,
         performedOn: session.performed_on,
         notes: session.notes ?? "",
         isPlanned: true,
         badges: exerciseBadgesBySessionId.get(session.id) ?? [],
       })),
-    [exerciseBadgesBySessionId, plannedSessions, sessionNumberById],
+    [exerciseBadgesBySessionId, plannedSessions],
   );
 
   if (isChecking) {
