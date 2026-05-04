@@ -491,18 +491,18 @@ export default function NewSessionPage() {
       return;
     }
     if (parsedSets !== null && (!Number.isFinite(parsedSets) || parsedSets <= 0)) {
-      showError("Please enter a valid target sets value before saving defaults.");
+      showError("Please enter a valid number of target working sets before saving defaults.");
       return;
     }
     if (parsedReps !== null && (!Number.isFinite(parsedReps) || parsedReps <= 0)) {
-      showError("Please enter a valid target reps value before saving defaults.");
+      showError("Please enter a valid target reps value for working sets before saving defaults.");
       return;
     }
     if (
       parsedTargetWeight !== null &&
       (!Number.isFinite(parsedTargetWeight) || parsedTargetWeight < 0)
     ) {
-      showError("Please enter a valid target weight before saving defaults.");
+      showError("Please enter a valid target weight (kg) for working sets before saving defaults.");
       return;
     }
 
@@ -755,7 +755,7 @@ export default function NewSessionPage() {
                         const baseTitle = selectedBadge ?? `Exercise ${index + 1}`;
                         const targetDetails = [
                           row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
-                          row.targetSets ? `${row.targetSets} sets` : null,
+                          row.targetSets ? `${row.targetSets} working sets` : null,
                           row.targetWeightKg ? `weight ${row.targetWeightKg} kg` : null,
                           row.targetReps ? `${row.targetReps} reps` : null,
                         ]
@@ -793,7 +793,7 @@ export default function NewSessionPage() {
                             : null;
                           const details = [
                             row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
-                            row.targetSets ? `${row.targetSets} sets` : null,
+                            row.targetSets ? `${row.targetSets} working sets` : null,
                             row.targetWeightKg ? `weight ${row.targetWeightKg} kg` : null,
                             row.targetReps ? `${row.targetReps} reps` : null,
                           ]
@@ -897,8 +897,11 @@ export default function NewSessionPage() {
                       ))}
                     </div>
                   </label>
+                  <p className="col-span-2 text-[11px] leading-snug text-zinc-500">
+                    Targets apply to working sets only; warmups do not count.
+                  </p>
                   <label className="block text-xs font-medium">
-                    Target sets
+                    Target working sets
                     <input
                       type="number"
                       min={1}
@@ -925,7 +928,7 @@ export default function NewSessionPage() {
                     />
                   </label>
                   <label className="block text-xs font-medium">
-                    Target reps
+                    Target reps (working sets)
                     <input
                       type="number"
                       min={1}
@@ -1003,6 +1006,9 @@ export default function NewSessionPage() {
                   </select>
                 </label>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <p className="text-xs leading-snug text-zinc-500 sm:col-span-2 lg:col-span-4">
+                    Targets apply to working sets only; warmups do not count.
+                  </p>
                   <label className="block text-sm font-medium">
                     Base weight (kg)
                     <input
@@ -1036,7 +1042,7 @@ export default function NewSessionPage() {
                     </div>
                   </label>
                   <label className="block text-sm font-medium">
-                    Target sets
+                    Target working sets
                     <input
                       type="number"
                       min={1}
@@ -1063,7 +1069,7 @@ export default function NewSessionPage() {
                     />
                   </label>
                   <label className="block text-sm font-medium">
-                    Target reps
+                    Target reps (working sets)
                     <input
                       type="number"
                       min={1}

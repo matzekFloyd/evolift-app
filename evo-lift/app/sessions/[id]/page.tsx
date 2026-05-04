@@ -869,15 +869,15 @@ export default function SessionDetailPage() {
       : null;
 
     if (parsedSets !== null && (!Number.isFinite(parsedSets) || parsedSets <= 0)) {
-      showError("Please enter a valid target sets value.");
+      showError("Please enter a valid number of target working sets.");
       return;
     }
     if (parsedReps !== null && (!Number.isFinite(parsedReps) || parsedReps <= 0)) {
-      showError("Please enter a valid target reps value.");
+      showError("Please enter a valid target reps value for working sets.");
       return;
     }
     if (parsedWeight !== null && (!Number.isFinite(parsedWeight) || parsedWeight < 0)) {
-      showError("Please enter a valid target weight.");
+      showError("Please enter a valid target weight (kg) for working sets.");
       return;
     }
     if (parsedBaseWeight !== null && (!Number.isFinite(parsedBaseWeight) || parsedBaseWeight < 0)) {
@@ -949,15 +949,15 @@ export default function SessionDetailPage() {
     const parsedWeight = targetsWeightKg ? Number(targetsWeightKg) : null;
 
     if (parsedSets !== null && (!Number.isFinite(parsedSets) || parsedSets <= 0)) {
-      showError("Please enter a valid target sets value.");
+      showError("Please enter a valid number of target working sets.");
       return;
     }
     if (parsedReps !== null && (!Number.isFinite(parsedReps) || parsedReps <= 0)) {
-      showError("Please enter a valid target reps value.");
+      showError("Please enter a valid target reps value for working sets.");
       return;
     }
     if (parsedWeight !== null && (!Number.isFinite(parsedWeight) || parsedWeight < 0)) {
-      showError("Please enter a valid target weight.");
+      showError("Please enter a valid target weight (kg) for working sets.");
       return;
     }
 
@@ -1418,7 +1418,7 @@ export default function SessionDetailPage() {
           const exerciseBadge = exerciseBadgeById.get(sessionExercise.exercise_id);
           const exerciseSlug = exerciseSlugById.get(sessionExercise.exercise_id);
           const targetParts = [
-            sessionExercise.target_sets ? `${sessionExercise.target_sets} sets` : null,
+            sessionExercise.target_sets ? `${sessionExercise.target_sets} working sets` : null,
             sessionExercise.target_weight_kg != null ? `${sessionExercise.target_weight_kg} kg` : null,
             sessionExercise.target_reps ? `${sessionExercise.target_reps} reps` : null,
           ].filter(Boolean) as string[];
@@ -1482,8 +1482,8 @@ export default function SessionDetailPage() {
                   {index + 1}/{sessionExercises.length}
                 </span>
               </div>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5">
+              <div className="mt-2 flex items-start justify-between gap-2">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                   <span className="text-sm font-medium text-zinc-600">Targets:</span>
                   {targetParts.length > 0 ? (
                     targetParts.map((part) => (
@@ -1497,15 +1497,6 @@ export default function SessionDetailPage() {
                   ) : (
                     <span className="text-xs text-zinc-500">none set</span>
                   )}
-                  {targetSetsMet ? (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-900"
-                      title="Working-set target met (warmups don't count). Use Add more sets to keep logging."
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-sky-700" aria-hidden />
-                      Target sets met
-                    </span>
-                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {exerciseSlug ? (
@@ -1529,6 +1520,7 @@ export default function SessionDetailPage() {
                         }
                         startTargetsEdit(sessionExercise, "inline");
                       }}
+                      title="Edit planned working-set targets (warmups do not count)."
                       className="inline-flex h-9 w-24 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
                     >
                       {targetsSessionExerciseId === sessionExercise.id && !isTargetsSheetOpen ? (
@@ -1543,15 +1535,19 @@ export default function SessionDetailPage() {
               </div>
               {!shouldUseSingleExerciseFlow && targetsSessionExerciseId === sessionExercise.id ? (
                 <div className="mt-3 rounded-md border border-zinc-200 bg-white p-3">
+                  <p className="mb-3 text-xs text-zinc-600">
+                    Values apply to working sets only; warmups do not count.
+                  </p>
                   <div className="grid grid-cols-3 gap-3">
                     <label className="block text-sm font-medium">
-                      Target sets
+                      Target working sets
                       <input
                         type="number"
                         min={1}
                         value={targetsSets}
                         onChange={(event) => setTargetsSets(event.target.value)}
                         className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                        placeholder="e.g. 3"
                       />
                     </label>
                     <label className="block text-sm font-medium">
@@ -1563,16 +1559,18 @@ export default function SessionDetailPage() {
                         value={targetsWeightKg}
                         onChange={(event) => setTargetsWeightKg(event.target.value)}
                         className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                        placeholder="e.g. 60"
                       />
                     </label>
                     <label className="block text-sm font-medium">
-                      Target reps
+                      Target reps (working sets)
                       <input
                         type="number"
                         min={1}
                         value={targetsReps}
                         onChange={(event) => setTargetsReps(event.target.value)}
                         className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                        placeholder="e.g. 8"
                       />
                     </label>
                   </div>
@@ -2213,8 +2211,11 @@ export default function SessionDetailPage() {
                         ))}
                       </div>
                     </label>
+                    <p className="text-xs text-zinc-600 sm:col-span-2">
+                      Target fields apply to working sets only; warmups do not count.
+                    </p>
                     <label className="block text-sm font-medium">
-                      Target sets
+                      Target working sets
                       <input
                         type="number"
                         min={1}
@@ -2244,7 +2245,7 @@ export default function SessionDetailPage() {
                       />
                     </label>
                     <label className="block text-sm font-medium">
-                      Target reps
+                      Target reps (working sets)
                       <input
                         type="number"
                         min={1}
@@ -2301,6 +2302,7 @@ export default function SessionDetailPage() {
               <button
                 type="button"
                 onClick={() => startTargetsEdit(activeSessionExercise, "sheet")}
+                title="Edit planned working-set targets (warmups do not count)."
                 className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs font-medium text-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:border-sky-300 hover:bg-zinc-100 sm:px-2.5 sm:text-sm"
               >
                 <ListChecks className="h-3.5 w-3.5 shrink-0 text-sky-700" aria-hidden />
@@ -2358,16 +2360,20 @@ export default function SessionDetailPage() {
                   Close
                 </button>
               </div>
-              <p className="mb-3 text-xs text-zinc-600">{targetsExerciseLabel}</p>
+              <p className="mb-2 text-xs text-zinc-600">{targetsExerciseLabel}</p>
+              <p className="mb-3 text-xs text-zinc-600">
+                Values apply to working sets only; warmups do not count.
+              </p>
               <div className="grid grid-cols-3 gap-3">
                 <label className="block text-sm font-medium">
-                  Target sets
+                  Target working sets
                   <input
                     type="number"
                     min={1}
                     value={targetsSets}
                     onChange={(event) => setTargetsSets(event.target.value)}
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                    placeholder="e.g. 3"
                   />
                 </label>
                 <label className="block text-sm font-medium">
@@ -2379,16 +2385,18 @@ export default function SessionDetailPage() {
                     value={targetsWeightKg}
                     onChange={(event) => setTargetsWeightKg(event.target.value)}
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                    placeholder="e.g. 60"
                   />
                 </label>
                 <label className="block text-sm font-medium">
-                  Target reps
+                  Target reps (working sets)
                   <input
                     type="number"
                     min={1}
                     value={targetsReps}
                     onChange={(event) => setTargetsReps(event.target.value)}
                     className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                    placeholder="e.g. 8"
                   />
                 </label>
               </div>
@@ -2460,6 +2468,9 @@ export default function SessionDetailPage() {
                     ))}
                   </select>
                 </label>
+                <p className="text-xs text-zinc-600">
+                  Target fields apply to working sets only; warmups do not count.
+                </p>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block text-sm font-medium">
                     Base (kg)
@@ -2475,7 +2486,7 @@ export default function SessionDetailPage() {
                     />
                   </label>
                   <label className="block text-sm font-medium">
-                    Target sets
+                    Target working sets
                     <input
                       type="number"
                       min={1}
@@ -2484,6 +2495,7 @@ export default function SessionDetailPage() {
                         setAddExerciseDraft((prev) => ({ ...prev, targetSets: event.target.value }))
                       }
                       className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="e.g. 3"
                     />
                   </label>
                   <label className="block text-sm font-medium">
@@ -2497,10 +2509,11 @@ export default function SessionDetailPage() {
                         setAddExerciseDraft((prev) => ({ ...prev, targetWeightKg: event.target.value }))
                       }
                       className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="e.g. 60"
                     />
                   </label>
                   <label className="block text-sm font-medium">
-                    Target reps
+                    Target reps (working sets)
                     <input
                       type="number"
                       min={1}
@@ -2509,6 +2522,7 @@ export default function SessionDetailPage() {
                         setAddExerciseDraft((prev) => ({ ...prev, targetReps: event.target.value }))
                       }
                       className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                      placeholder="e.g. 8"
                     />
                   </label>
                 </div>

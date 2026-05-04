@@ -17,7 +17,7 @@ This document defines the product tone and UI consistency rules for EvoLift.
 
 Examples:
 
-- Prefer: `Please enter a valid target reps value.`
+- Prefer: `Please enter a valid target reps value for working sets.`
 - Avoid: `Oops! Something went wrong.`
 
 ## Naming and terminology
@@ -26,7 +26,7 @@ Examples:
 - Use `Exercise` for a movement inside a session.
 - Use `Set` for logged reps/weight entries.
 - Use `Loaded (kg)` for external loaded weight.
-- Use `Target weight (kg)` in target/default forms.
+- Use `Target weight (kg)` in target/default forms. Make clear that **target set counts and target reps** describe **working sets** only; warmups are extra and do not count toward those targets.
 - Use `reps` format as `<number> reps` (e.g. `5 reps`).
 
 ## Visual style

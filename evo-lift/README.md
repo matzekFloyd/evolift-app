@@ -13,7 +13,7 @@ Before merging UI or copy updates, quickly validate against the brand checklist 
 
 Minimum review checklist:
 
-- Terminology is consistent (`Workout session`, `Set`, `Target weight (kg)`, `<number> reps`).
+- Terminology is consistent (`Workout session`, `Set`, `Target weight (kg)`, `<number> reps`, working-set targets vs warmups).
 - Action colors and icons match intent (primary/neutral/destructive/success).
 - Feedback uses shared status notice patterns where applicable.
 - Mobile/compact behavior remains usable for high-frequency actions.

@@ -417,17 +417,17 @@ export default function AccountPage() {
     }
     if (parsedTargetSets !== null && (!Number.isFinite(parsedTargetSets) || parsedTargetSets <= 0)) {
       setDefaultsMessageTone("error");
-      setDefaultsMessage("Please enter a valid default target sets value.");
+      setDefaultsMessage("Please enter a valid default number of target working sets.");
       return;
     }
     if (parsedTargetReps !== null && (!Number.isFinite(parsedTargetReps) || parsedTargetReps <= 0)) {
       setDefaultsMessageTone("error");
-      setDefaultsMessage("Please enter a valid default target reps value.");
+      setDefaultsMessage("Please enter a valid default target reps value for working sets.");
       return;
     }
     if (parsedTargetWeight !== null && (!Number.isFinite(parsedTargetWeight) || parsedTargetWeight < 0)) {
       setDefaultsMessageTone("error");
-      setDefaultsMessage("Please enter a valid default target weight.");
+      setDefaultsMessage("Please enter a valid default target weight (kg) for working sets.");
       return;
     }
 
@@ -828,7 +828,7 @@ export default function AccountPage() {
       <SettingsSection>
         <SettingsSectionHeader
           title="Exercise defaults"
-          description="Set starting values that will prefill sets, reps, and weight when you pick an exercise."
+          description="Set starting values that prefill when you add an exercise to a session. Target counts and reps apply to working sets only (not warmups)."
           icon={<SlidersHorizontal className="h-4 w-4 text-zinc-500" />}
         />
         <SettingsSectionBody>
@@ -864,9 +864,12 @@ export default function AccountPage() {
             </label>
             <div className="hidden sm:block" />
           </div>
+          <p className="text-xs text-zinc-600">
+            Default targets apply to working sets only; warmups do not count.
+          </p>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="block text-sm font-medium">
-              Default target sets
+              Default target working sets
               <input
                 type="number"
                 min={1}
@@ -889,7 +892,7 @@ export default function AccountPage() {
               />
             </label>
             <label className="block text-sm font-medium">
-              Default target reps
+              Default target reps (working sets)
               <input
                 type="number"
                 min={1}
