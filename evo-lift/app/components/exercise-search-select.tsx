@@ -111,8 +111,9 @@ export function ExerciseSearchSelect({
     };
   }, [open, close]);
 
+  /** `h-10` / `h-9` align with common `input` + `py-2` / compact `py-1.5` row heights. */
   const triggerPad =
-    size === "compact" ? "min-h-[42px] px-2 py-2 text-sm" : "min-h-[44px] px-3 py-2 text-sm";
+    size === "compact" ? "h-9 px-2 text-sm" : "h-10 px-3 text-sm";
   const searchPad = size === "compact" ? "px-2 py-1.5 text-sm" : "px-2 py-2 text-sm";
   const optionPad = size === "compact" ? "px-2 py-2.5 text-sm" : "px-3 py-2.5 text-sm";
 

@@ -835,7 +835,7 @@ export default function AccountPage() {
         <SettingsSectionBody>
         <form onSubmit={handleDefaultsSave} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className="block text-sm font-medium">
+            <label className="block text-sm font-medium sm:col-span-2">
               Exercise
               <ExerciseSearchSelect
                 required
@@ -853,11 +853,10 @@ export default function AccountPage() {
                 step="0.25"
                 value={defaultBaseWeightKg}
                 onChange={(event) => setDefaultBaseWeightKg(event.target.value)}
-                className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+                className="mt-1 h-10 w-full rounded-md border bg-white px-3 py-2 text-sm"
                 placeholder="e.g. 20"
               />
             </label>
-            <div className="hidden sm:block" />
           </div>
           <p className="text-xs text-zinc-600">
             Default targets apply to working sets only; warmups do not count.
