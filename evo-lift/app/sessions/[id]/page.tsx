@@ -18,7 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -217,6 +217,10 @@ export default function SessionDetailPage() {
   const [isSmallPhone, setIsSmallPhone] = useState(false);
   const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
   const activeExerciseIndexChangeSourceRef = useRef<"user" | "url">("user");
+  /** Tracks `workout_session_exercises.id` for the active row to clear global notices on exercise change (#72). */
+  const lastActiveSessionExerciseIdRef = useRef<string | null>(null);
+  /** Compact add-exercise jumps to the new row in the same tick as success; keep that toast once. */
+  const skipNextClearMessageOnExerciseIdChangeRef = useRef(false);
   const lastSessionExerciseIdsKeyRef = useRef<string>("");
   const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   /** Compact single-exercise flow: show full new-set composer after target working sets are met. */
@@ -270,9 +274,9 @@ export default function SessionDetailPage() {
     setMessage(messageText);
   }
 
-  function clearMessage() {
+  const clearMessage = useCallback(() => {
     setMessage(null);
-  }
+  }, []);
 
   function getExerciseLabelForSessionExerciseId(sessionExerciseId: string): string {
     const sessionExercise = sessionExercises.find((item) => item.id === sessionExerciseId);
@@ -573,6 +577,35 @@ export default function SessionDetailPage() {
       setActiveExerciseIndex(Math.max(0, sessionExercises.length - 1));
     }
   }, [activeExerciseIndex, sessionExercises.length]);
+
+  useEffect(() => {
+    lastActiveSessionExerciseIdRef.current = null;
+    skipNextClearMessageOnExerciseIdChangeRef.current = false;
+  }, [sessionId]);
+
+  /** Global StatusNotice (message): clear when the active session exercise changes (#72). Session header field errors stay on their controls. */
+  useEffect(() => {
+    if (isChecking) {
+      return;
+    }
+    if (activeExerciseIndex < 0 || activeExerciseIndex >= sessionExercises.length) {
+      return;
+    }
+    const id = sessionExercises[activeExerciseIndex]?.id;
+    if (!id) {
+      return;
+    }
+    const prev = lastActiveSessionExerciseIdRef.current;
+    if (skipNextClearMessageOnExerciseIdChangeRef.current) {
+      skipNextClearMessageOnExerciseIdChangeRef.current = false;
+      lastActiveSessionExerciseIdRef.current = id;
+      return;
+    }
+    if (prev !== null && id !== prev) {
+      clearMessage();
+    }
+    lastActiveSessionExerciseIdRef.current = id;
+  }, [activeExerciseIndex, sessionExercises, isChecking, clearMessage]);
 
   useEffect(() => {
     if (isChecking || !sessionId || session?.id !== sessionId) {
@@ -993,11 +1026,12 @@ export default function SessionDetailPage() {
     }
 
     setSessionExercises((prev) => [...prev, data].sort((a, b) => a.position - b.position));
-    showSuccess("Exercise added to session.");
     if (isCompactView) {
+      skipNextClearMessageOnExerciseIdChangeRef.current = true;
       setActiveExerciseIndex(sessionExercises.length);
       setIsAddExerciseSheetOpen(false);
     }
+    showSuccess("Exercise added to session.");
     setAddExerciseDraft(emptyAddExerciseDraft);
     setIsAddingExercise(false);
   }
