@@ -148,18 +148,15 @@ function loggedLoadKg(row: ExerciseSetHistoryRow): number | null {
 }
 
 /**
- * Per-set volume (kg) = loaded (kg) × reps; only when load is logged and reps are valid
- * (matches insights weekly volume: no contribution when weight is null).
+ * Per-set total on the bar (kg) for KPIs: same value as the history **Total (kg)** column
+ * (`loaded + session base` for this exercise). Only working sets with a **logged** load
+ * (same gate as loaded KPIs); see `loggedLoadKg`.
  */
-function setVolumeKg(row: ExerciseSetHistoryRow): number | null {
-  if (!Number.isFinite(row.reps) || row.reps <= 0) {
+function setTotalKgForStats(row: ExerciseSetHistoryRow): number | null {
+  if (loggedLoadKg(row) === null) {
     return null;
   }
-  const loaded = loggedLoadKg(row);
-  if (loaded === null) {
-    return null;
-  }
-  return loaded * row.reps;
+  return row.totalKg;
 }
 
 function formatKgValue(value: number | null, fractionDigits: number): string {
@@ -369,14 +366,15 @@ export default function ExerciseDetailPage() {
     };
   }, [workingRows]);
 
-  const volumeStats = useMemo(() => {
-    const volumes = workingRows.map(setVolumeKg).filter((v): v is number => v !== null);
-    if (volumes.length === 0) {
-      return { maxTotal: null as number | null, avgTotal: null as number | null };
+  /** Avg / max over individual working sets’ Total (kg), not session roll-ups or volume (kg × reps). */
+  const totalKgStats = useMemo(() => {
+    const perSet = workingRows.map(setTotalKgForStats).filter((v): v is number => v !== null);
+    if (perSet.length === 0) {
+      return { maxTotalKg: null as number | null, avgTotalKg: null as number | null };
     }
     return {
-      maxTotal: Math.max(...volumes),
-      avgTotal: volumes.reduce((s, v) => s + v, 0) / volumes.length,
+      maxTotalKg: Math.max(...perSet),
+      avgTotalKg: perSet.reduce((s, v) => s + v, 0) / perSet.length,
     };
   }, [workingRows]);
 
@@ -385,16 +383,16 @@ export default function ExerciseDetailPage() {
     [loadStats.maxLoaded],
   );
   const maxTotalText = useMemo(
-    () => formatKgValue(volumeStats.maxTotal, 1),
-    [volumeStats.maxTotal],
+    () => formatKgValue(totalKgStats.maxTotalKg, 1),
+    [totalKgStats.maxTotalKg],
   );
   const averageLoadedText = useMemo(
     () => formatKgValue(loadStats.avgLoaded, 1),
     [loadStats.avgLoaded],
   );
   const averageTotalText = useMemo(
-    () => formatKgValue(volumeStats.avgTotal, 1),
-    [volumeStats.avgTotal],
+    () => formatKgValue(totalKgStats.avgTotalKg, 1),
+    [totalKgStats.avgTotalKg],
   );
 
   /** Default date + session + set order (newest first, highest set first); same as Session date ↓ on wide layout. */
@@ -539,16 +537,16 @@ export default function ExerciseDetailPage() {
                   tone="success"
                 />
                 <KpiBadge
-                  label="Avg total"
+                  label="Avg total (kg)"
                   value={averageTotalText}
                   icon={<TrendingUp className="h-4 w-4 text-sky-700" />}
-                  description="Average loaded (kg) × reps per working set (no warmups). Skips sets without logged weight or valid reps."
+                  description="Mean of each working set’s Total (kg)—loaded plus base for that session—same column as the table below. No warmups; only sets with logged load."
                 />
                 <KpiBadge
-                  label="Max total"
+                  label="Max total (kg)"
                   value={maxTotalText}
                   icon={<TrendingUp className="h-4 w-4 text-emerald-700" />}
-                  description="Best single working set by loaded (kg) × reps (no warmups). Skips sets without logged weight or valid reps."
+                  description="Heaviest single working set by Total (kg) in the table (loaded plus base). No warmups; only sets with logged load."
                   tone="success"
                 />
               </div>
@@ -562,7 +560,12 @@ export default function ExerciseDetailPage() {
                   <span className={COMPACT_HISTORY_TYPE_CELL}>Type</span>
                   <span className="text-right">Set</span>
                   <span className="text-right">Kg</span>
-                  <span className="text-right">Total</span>
+                  <span
+                    className="text-right"
+                    title="Loaded weight plus optional base weight for this exercise on that session."
+                  >
+                    Total
+                  </span>
                   <span className="text-right">Reps</span>
                 </div>
                 {compactHistoryRows.map((row, index) => (
