@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Dumbbell,
   ListChecks,
   Lock,
   LockOpen,
@@ -28,6 +27,7 @@ import { CompactStickyBar } from "@/app/components/compact-sticky-bar";
 import { CompactRowActions } from "@/app/components/compact-row-actions";
 import { SetKindIndicator } from "@/app/components/set-kind-indicator";
 import { DateInput } from "@/app/components/date-input";
+import { ExerciseSearchSelect } from "@/app/components/exercise-search-select";
 import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
@@ -2278,20 +2278,14 @@ export default function SessionDetailPage() {
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <label className="block text-sm font-medium sm:col-span-2">
                       Exercise
-                      <select
+                      <ExerciseSearchSelect
+                        className="mt-1 w-full"
+                        options={addExercisePickerOptions}
                         value={addExerciseDraft.exerciseId}
-                        onChange={(event) =>
-                          setAddExerciseDraft((prev) => ({ ...prev, exerciseId: event.target.value }))
+                        onChange={(exerciseId) =>
+                          setAddExerciseDraft((prev) => ({ ...prev, exerciseId }))
                         }
-                        className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                      >
-                        <option value="">Select exercise</option>
-                        {addExercisePickerOptions.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.label} ({toExerciseBadge(option.slug)})
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </label>
                     <label className="block text-sm font-medium">
                       Base weight (kg)
@@ -2566,20 +2560,14 @@ export default function SessionDetailPage() {
               <div className="grid gap-3">
                 <label className="block text-sm font-medium">
                   Exercise
-                  <select
+                  <ExerciseSearchSelect
+                    className="mt-1 w-full"
+                    options={addExercisePickerOptions}
                     value={addExerciseDraft.exerciseId}
-                    onChange={(event) =>
-                      setAddExerciseDraft((prev) => ({ ...prev, exerciseId: event.target.value }))
+                    onChange={(exerciseId) =>
+                      setAddExerciseDraft((prev) => ({ ...prev, exerciseId }))
                     }
-                    className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                  >
-                    <option value="">Select exercise</option>
-                    {addExercisePickerOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label} ({toExerciseBadge(option.slug)})
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
                 <p className="text-xs text-zinc-600">
                   Target fields apply to working sets only; warmups do not count.
