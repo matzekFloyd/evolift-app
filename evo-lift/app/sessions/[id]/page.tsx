@@ -225,6 +225,8 @@ export default function SessionDetailPage() {
   const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
   /** Compact single-exercise flow: show full new-set composer after target working sets are met. */
   const [compactShowExtraSetComposer, setCompactShowExtraSetComposer] = useState(false);
+  const [pendingCompactSetFocusSessionExerciseId, setPendingCompactSetFocusSessionExerciseId] =
+    useState<string | null>(null);
   /** Full (md+) table: session_exercise ids where the add-set row stays open past target. */
   const [fullViewExpandAddSetRowIds, setFullViewExpandAddSetRowIds] = useState<Set<string>>(
     () => new Set(),
@@ -807,6 +809,15 @@ export default function SessionDetailPage() {
     const mergedForExercise = [...getSetsForExercise(sessionExerciseId), data].sort(
       (a, b) => a.set_number - b.set_number,
     );
+    const nextWorkingSetCount = mergedForExercise.filter((set) => !set.is_warmup).length;
+    const nextTargetSetsGoal = sessionExercise?.target_sets ?? null;
+    const nextTargetSetsMet =
+      nextTargetSetsGoal != null &&
+      nextTargetSetsGoal > 0 &&
+      nextWorkingSetCount >= nextTargetSetsGoal;
+    if (isCompactView && nextTargetSetsMet) {
+      setCompactShowExtraSetComposer(true);
+    }
     const nextSuggested = resolveSuggestedAddDraft(sessionExercise, mergedForExercise, undefined);
     setAddDrafts((prev) => ({
       ...prev,
@@ -814,6 +825,10 @@ export default function SessionDetailPage() {
     }));
     const exerciseLabel = getExerciseLabelForSessionExerciseId(sessionExerciseId);
     showSuccess(`Set ${data.set_number} added for ${exerciseLabel}.`);
+    if (isCompactView) {
+      setCompactShowExtraSetComposer(true);
+      setPendingCompactSetFocusSessionExerciseId(sessionExerciseId);
+    }
     setIsSavingSet(false);
   }
 
@@ -1205,6 +1220,45 @@ export default function SessionDetailPage() {
     }
     router.push("/");
   }
+
+  useEffect(() => {
+    if (!isSmallPhone || !pendingCompactSetFocusSessionExerciseId) {
+      return;
+    }
+    let attempts = 0;
+    let timer: number | null = null;
+    const targetId = pendingCompactSetFocusSessionExerciseId;
+
+    const tryFocus = () => {
+      attempts += 1;
+      const panel = document.getElementById(`compact-new-set-panel-${targetId}`);
+      if (panel instanceof HTMLElement) {
+        panel.scrollIntoView({ behavior: "smooth", block: "center" });
+        const firstInput = panel.querySelector<HTMLInputElement>('input[type="number"]');
+        firstInput?.focus();
+        setPendingCompactSetFocusSessionExerciseId(null);
+        return;
+      }
+      if (attempts < 8) {
+        timer = window.setTimeout(tryFocus, 80);
+        return;
+      }
+      setPendingCompactSetFocusSessionExerciseId(null);
+    };
+
+    timer = window.setTimeout(tryFocus, 60);
+    return () => {
+      if (timer != null) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [
+    isSmallPhone,
+    pendingCompactSetFocusSessionExerciseId,
+    compactShowExtraSetComposer,
+    activeExerciseIndex,
+    workoutSets.length,
+  ]);
 
   if (isChecking) {
     return (
@@ -1890,6 +1944,7 @@ export default function SessionDetailPage() {
                     </div>
                   ) : (
                     <div
+                      id={`compact-new-set-panel-${sessionExercise.id}`}
                       className={
                         compactNewSetPanelHighlight
                           ? "rounded-md border border-sky-200 bg-sky-50/55 p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
