@@ -32,6 +32,7 @@ import { getTodayYyyyMmDd } from "@/lib/session-date";
 const NEW_SESSION_DRAFT_KEY = "evolift:new-session-draft";
 
 type ExerciseDraftRow = {
+  rowId: string;
   exerciseId: string;
   baseWeightKg: string;
   targetSets: string;
@@ -48,14 +49,19 @@ type NewSessionDraft = {
 
 type ExerciseDefaultsRow = Database["public"]["Tables"]["user_exercise_defaults"]["Row"];
 
-const emptyExerciseRow: ExerciseDraftRow = {
-  exerciseId: "",
-  baseWeightKg: "",
-  targetSets: "",
-  targetReps: "",
-  targetWeightKg: "",
-  notes: "",
-};
+let nextExerciseRowId = 1;
+
+function createEmptyExerciseRow(): ExerciseDraftRow {
+  return {
+    rowId: `exercise-row-${nextExerciseRowId++}`,
+    exerciseId: "",
+    baseWeightKg: "",
+    targetSets: "",
+    targetReps: "",
+    targetWeightKg: "",
+    notes: "",
+  };
+}
 
 export default function NewSessionPage() {
   const router = useRouter();
@@ -69,13 +75,13 @@ export default function NewSessionPage() {
     Array<{ id: string; label: string; slug: string }>
   >([]);
   const [exerciseRows, setExerciseRows] = useState<ExerciseDraftRow[]>([
-    emptyExerciseRow,
+    createEmptyExerciseRow(),
   ]);
   const [exerciseDefaultsById, setExerciseDefaultsById] = useState<
     Map<string, ExerciseDefaultsRow>
   >(new Map());
   const [expandedExerciseNotes, setExpandedExerciseNotes] = useState<Set<number>>(new Set());
-  const [collapsedExercises, setCollapsedExercises] = useState<Set<number>>(new Set());
+  const [collapsedExercises, setCollapsedExercises] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [createMode, setCreateMode] = useState<"home" | "log">("home");
   const [message, setMessage] = useState<string | null>(null);
@@ -104,7 +110,7 @@ export default function NewSessionPage() {
     setPerformedOn(getTodayYyyyMmDd());
     setNotes("");
     setIsSessionNotesExpanded(false);
-    setExerciseRows([{ ...emptyExerciseRow }]);
+    setExerciseRows([createEmptyExerciseRow()]);
     setExpandedExerciseNotes(new Set());
     setCollapsedExercises(new Set());
   }
@@ -332,11 +338,12 @@ export default function NewSessionPage() {
   function addExerciseRow() {
     setExerciseRows((prev) => [
       ...prev,
-      { ...emptyExerciseRow },
+      createEmptyExerciseRow(),
     ]);
   }
 
   function removeExerciseRow(index: number) {
+    const removedRowId = exerciseRows[index]?.rowId ?? null;
     setExerciseRows((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
     setExpandedExerciseNotes((prev) => {
       const next = new Set<number>();
@@ -348,16 +355,13 @@ export default function NewSessionPage() {
       }
       return next;
     });
-    setCollapsedExercises((prev) => {
-      const next = new Set<number>();
-      for (const currentIndex of prev) {
-        if (currentIndex === index) {
-          continue;
-        }
-        next.add(currentIndex > index ? currentIndex - 1 : currentIndex);
-      }
-      return next;
-    });
+    if (removedRowId) {
+      setCollapsedExercises((prev) => {
+        const next = new Set(prev);
+        next.delete(removedRowId);
+        return next;
+      });
+    }
   }
 
   function updateExerciseRow(
@@ -442,23 +446,38 @@ export default function NewSessionPage() {
     });
   }
 
-  function toggleExerciseCollapsed(index: number) {
+  function toggleExerciseCollapsed(rowId: string) {
     setCollapsedExercises((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
+      if (next.has(rowId)) {
+        next.delete(rowId);
       } else {
-        next.add(index);
+        next.add(rowId);
       }
       return next;
     });
   }
 
-  function collapseExercise(index: number) {
+  function collapseExercise(rowId: string) {
     setCollapsedExercises((prev) => {
       const next = new Set(prev);
-      next.add(index);
+      next.add(rowId);
       return next;
+    });
+  }
+
+  function focusExercisePicker(index: number) {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const rowRoot = document.querySelector(`[data-exercise-row-id="row-${index}"]`);
+        if (!(rowRoot instanceof HTMLElement)) {
+          return;
+        }
+        const nextFocusable = rowRoot.querySelector<HTMLElement>(
+          'input, button[role="combobox"], [role="combobox"], button, [tabindex]:not([tabindex="-1"])',
+        );
+        nextFocusable?.focus();
+      });
     });
   }
 
@@ -579,8 +598,8 @@ export default function NewSessionPage() {
                 Exercises
               </h2>
               {isCompactView && exerciseRows.length > 0 ? (
-                <span className="text-xs text-zinc-500">
-                  {activeExerciseIndex + 1}/{exerciseRows.length}
+                <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">
+                  Exercise {activeExerciseIndex + 1} of {exerciseRows.length}
                 </span>
               ) : null}
               <div className={`flex items-center gap-2 ${isCompactView ? "hidden" : ""}`}>
@@ -609,7 +628,8 @@ export default function NewSessionPage() {
             </div>
             {visibleExerciseRows.map(({ row, index }) => (
               <div
-                key={index}
+                key={row.rowId}
+                data-exercise-row-id={`row-${index}`}
                 onFocusCapture={() => setActiveExerciseIndex(index)}
                 className={
                   isCompactView
@@ -646,15 +666,17 @@ export default function NewSessionPage() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => toggleExerciseCollapsed(index)}
+                      onClick={() => toggleExerciseCollapsed(row.rowId)}
                       className="inline-flex min-h-6 items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-zinc-100 hover:text-zinc-800"
                       aria-label={
-                        collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"
+                        collapsedExercises.has(row.rowId) ? "Expand exercise" : "Collapse exercise"
                       }
-                      title={collapsedExercises.has(index) ? "Expand exercise" : "Collapse exercise"}
+                      title={
+                        collapsedExercises.has(row.rowId) ? "Expand exercise" : "Collapse exercise"
+                      }
                     >
                       <span className="inline-flex h-6 w-6 items-center justify-center">
-                        {collapsedExercises.has(index) ? (
+                        {collapsedExercises.has(row.rowId) ? (
                           <ChevronDown className="h-4 w-4" />
                         ) : (
                           <ChevronUp className="h-4 w-4" />
@@ -831,7 +853,7 @@ export default function NewSessionPage() {
                   <button
                     type="button"
                     onClick={() => toggleExerciseNotes(index)}
-                    className="inline-flex items-center gap-1 text-left hover:text-sky-700"
+                    className="inline-flex items-center gap-1 text-left text-sm font-medium hover:text-sky-700"
                   >
                     <NotebookPen className="h-3.5 w-3.5 text-zinc-500" />
                     {expandedExerciseNotes.has(index)
@@ -858,9 +880,11 @@ export default function NewSessionPage() {
                       className="font-normal"
                       disabled={!row.exerciseId}
                       onClick={() => {
-                        collapseExercise(index);
+                        collapseExercise(row.rowId);
                         addExerciseRow();
-                        setActiveExerciseIndex(exerciseRows.length);
+                        const nextRowIndex = exerciseRows.length;
+                        setActiveExerciseIndex(nextRowIndex);
+                        focusExercisePicker(nextRowIndex);
                       }}
                     >
                       <Plus className="h-3.5 w-3.5 text-white" />
@@ -885,7 +909,7 @@ export default function NewSessionPage() {
                       {activeExerciseIndex < exerciseRows.length - 1 ? (
                         <ActionButton
                           type="button"
-                          variant="primary"
+                          variant="secondary"
                           size="sm"
                           fullWidth
                           className="min-w-0 flex-1 font-normal"
@@ -896,7 +920,7 @@ export default function NewSessionPage() {
                             )
                           }
                         >
-                          <ChevronRight className="h-3.5 w-3.5 text-white" />
+                          <ChevronRight className="h-3.5 w-3.5 text-sky-700" />
                           Next exercise
                         </ActionButton>
                       ) : null}
@@ -904,7 +928,7 @@ export default function NewSessionPage() {
                   ) : null}
                 </div>
                   </>
-                ) : collapsedExercises.has(index) ? null : (
+                ) : collapsedExercises.has(row.rowId) ? null : (
                   <>
                 <div className="mt-5">
                   <div className="grid grid-cols-12 items-start gap-2">
@@ -1021,7 +1045,7 @@ export default function NewSessionPage() {
                   <button
                     type="button"
                     onClick={() => toggleExerciseNotes(index)}
-                    className="inline-flex items-center gap-1 text-left hover:text-sky-700"
+                    className="inline-flex items-center gap-1 text-left text-sm font-medium hover:text-sky-700"
                   >
                     <NotebookPen className="h-3.5 w-3.5 text-zinc-500" />
                     {expandedExerciseNotes.has(index)
@@ -1046,7 +1070,7 @@ export default function NewSessionPage() {
                       size="sm"
                       className="font-normal sm:flex-1"
                       disabled={!row.exerciseId}
-                      onClick={() => collapseExercise(index)}
+                      onClick={() => collapseExercise(row.rowId)}
                     >
                       <Check className="h-3.5 w-3.5 text-sky-700" />
                       Save exercise
@@ -1058,8 +1082,9 @@ export default function NewSessionPage() {
                       className="font-normal sm:flex-1"
                       disabled={!row.exerciseId}
                       onClick={() => {
-                        collapseExercise(index);
+                        collapseExercise(row.rowId);
                         addExerciseRow();
+                        focusExercisePicker(exerciseRows.length);
                       }}
                     >
                       <Plus className="h-3.5 w-3.5 text-white" />
