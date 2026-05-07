@@ -1,5 +1,7 @@
 # EvoLift
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 EvoLift is a mobile-first workout logging application built with Next.js and Supabase.
 
 It focuses on fast session creation, compact in-session logging, and practical defaults for recurring exercises so lifters can log training with minimal friction.
@@ -227,3 +229,20 @@ From `evo-lift/`:
 - `npm run build` - Build production bundle
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+
+## License
+
+This project is licensed under the MIT License. See [`LICENSE`](LICENSE).
+
+## Contributing
+
+Contributions are welcome.
+
+- Open an issue first for larger changes so approach and scope are clear.
+- Keep pull requests focused and include validation steps (for example `npm run lint` and `npm run build` from `evo-lift/`).
+- If you change schema or seed behavior, include the relevant updates under `supabase/migrations/` or `supabase/seeds/`.
+
+## Support
+
+- Bug reports and feature requests: open a GitHub issue in this repository.
+- Security-related concerns: follow [`SECURITY.md`](SECURITY.md) and do not disclose sensitive details publicly.
