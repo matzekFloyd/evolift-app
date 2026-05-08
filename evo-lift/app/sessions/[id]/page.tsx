@@ -193,6 +193,7 @@ export default function SessionDetailPage() {
   const [sessionExercises, setSessionExercises] = useState<SessionExerciseRow[]>([]);
   const [workoutSets, setWorkoutSets] = useState<WorkoutSetRow[]>([]);
   const [sessionNumber, setSessionNumber] = useState<number | null>(null);
+  const [sourceTemplateName, setSourceTemplateName] = useState<string | null>(null);
   const [exerciseLabels, setExerciseLabels] = useState<Map<string, string>>(new Map());
   const [addDrafts, setAddDrafts] = useState<Record<string, Partial<SetDraft>>>({});
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
@@ -314,7 +315,9 @@ export default function SessionDetailPage() {
         () =>
           supabaseBrowserClient
             .from("workout_sessions")
-            .select("id, user_id, performed_on, notes, created_at, updated_at")
+            .select(
+              "id, user_id, performed_on, notes, created_at, updated_at, source_template_id, workout_templates(name)",
+            )
             .eq("id", sessionId)
             .single(),
       );
@@ -460,9 +463,27 @@ export default function SessionDetailPage() {
         hiddenSet.add(row.exercise_id);
       }
 
-      setSession(sessionData);
-      setPerformedOnDraft(sessionData.performed_on);
-      setNotesDraft(sessionData.notes ?? "");
+      const sessionRow = sessionData as SessionRow;
+      const templateJoin = (
+        sessionData as unknown as {
+          workout_templates?: { name: string } | { name: string }[] | null;
+        }
+      ).workout_templates;
+      const resolvedTemplateName = Array.isArray(templateJoin)
+        ? (templateJoin[0]?.name ?? null)
+        : (templateJoin?.name ?? null);
+      setSourceTemplateName(resolvedTemplateName);
+      setSession({
+        id: sessionRow.id,
+        user_id: sessionRow.user_id,
+        performed_on: sessionRow.performed_on,
+        notes: sessionRow.notes,
+        source_template_id: sessionRow.source_template_id,
+        created_at: sessionRow.created_at,
+        updated_at: sessionRow.updated_at,
+      });
+      setPerformedOnDraft(sessionRow.performed_on);
+      setNotesDraft(sessionRow.notes ?? "");
       setSessionDetailsDateError(null);
       setSessionDetailsNotesError(null);
       setSessionNumber(computedSessionNumber > 0 ? computedSessionNumber : null);
@@ -1190,7 +1211,7 @@ export default function SessionDetailPage() {
         notes: notesPayload,
       })
       .eq("id", sessionId)
-      .select("id, user_id, performed_on, notes, created_at, updated_at")
+      .select("id, user_id, performed_on, notes, created_at, updated_at, source_template_id")
       .single();
 
     if (error || !data) {
@@ -1348,11 +1369,16 @@ export default function SessionDetailPage() {
               <h1 className="truncate text-lg font-semibold tracking-tight">
                 Workout session #{sessionNumber ?? "-"}
               </h1>
-              <p className="mt-0.5 inline-flex items-center gap-2 text-sm text-zinc-500">
+              <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
                 <span>{formattedPerformedOn}</span>
                 {isPlannedSession ? (
                   <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
                     Planned
+                  </span>
+                ) : null}
+                {sourceTemplateName ? (
+                  <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
+                    Created from: {sourceTemplateName}
                   </span>
                 ) : null}
               </p>
@@ -1369,11 +1395,16 @@ export default function SessionDetailPage() {
         ) : (
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Workout session #{sessionNumber ?? "-"}</h1>
-            <p className="mt-0.5 inline-flex items-center gap-2 text-sm text-zinc-500">
+            <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
               <span>{formattedPerformedOn}</span>
               {isPlannedSession ? (
                 <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-700">
                   Planned
+                </span>
+              ) : null}
+              {sourceTemplateName ? (
+                <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
+                  Created from: {sourceTemplateName}
                 </span>
               ) : null}
             </p>

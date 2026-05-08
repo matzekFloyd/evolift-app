@@ -23,6 +23,7 @@ Examples:
 ## Naming and terminology
 
 - Use `Workout session` for a completed workout record.
+- Use `Template` for a saved, reusable list of exercises (with optional targets) that can start or prefill a session.
 - Use `Exercise` for a movement inside a session.
 - Use `Set` for logged reps/weight entries.
 - Use `Loaded (kg)` for external loaded weight.

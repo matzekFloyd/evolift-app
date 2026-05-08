@@ -379,13 +379,21 @@ export default function Home() {
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-medium text-zinc-800">Past workouts</h2>
-              <Link
-                href="/exercises"
-                className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 underline-offset-2 hover:text-sky-800 hover:underline"
-              >
-                <Dumbbell className="h-3.5 w-3.5 text-sky-700" />
-                Exercises
-              </Link>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Link
+                  href="/templates"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 underline-offset-2 hover:text-sky-800 hover:underline"
+                >
+                  Templates
+                </Link>
+                <Link
+                  href="/exercises"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 underline-offset-2 hover:text-sky-800 hover:underline"
+                >
+                  <Dumbbell className="h-3.5 w-3.5 text-sky-700" />
+                  Exercises
+                </Link>
+              </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div className="grid gap-2 sm:grid-cols-2">

@@ -1,45 +1,25 @@
 "use client";
 
-import { ArrowLeft, CalendarPlus } from "lucide-react";
-import {
-  CalendarDays,
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  Check,
-  Dumbbell,
-  Eraser,
-  ListChecks,
-  NotebookPen,
-  Plus,
-  Play,
-} from "lucide-react";
+import { ArrowLeft, CalendarDays, CalendarPlus, Check, NotebookPen, Play } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { ActionButton } from "@/app/components/action-button";
 import { DateInput } from "@/app/components/date-input";
-import { ExerciseSearchSelect } from "@/app/components/exercise-search-select";
-import { InfoPopover } from "@/app/components/info-popover";
-import { NotesTextareaField } from "@/app/components/notes-textarea-field";
 import { PageShell } from "@/app/components/page-shell";
 import { StatusNotice } from "@/app/components/status-notice";
+import { WorkoutExerciseDraftList } from "@/app/components/workout-exercise-draft-list";
 import type { Database } from "@/lib/supabase/database.types";
-import { toExerciseBadge } from "@/lib/exercise-badge";
-import { exerciseOptionsForPicker } from "@/lib/exercise-picker-options";
+import {
+  createEmptyExerciseRow,
+  exerciseDraftRowsFromTemplateLines,
+  type ExerciseDraftRow,
+} from "@/lib/workout-exercise-draft";
 import { getTodayYyyyMmDd } from "@/lib/session-date";
+import type { WorkoutTemplateWithExercises } from "@/server/db/templates";
 
 const NEW_SESSION_DRAFT_KEY = "evolift:new-session-draft";
-
-type ExerciseDraftRow = {
-  rowId: string;
-  exerciseId: string;
-  baseWeightKg: string;
-  targetSets: string;
-  targetReps: string;
-  targetWeightKg: string;
-  notes: string;
-};
 
 type NewSessionDraft = {
   performedOn: string;
@@ -48,20 +28,6 @@ type NewSessionDraft = {
 };
 
 type ExerciseDefaultsRow = Database["public"]["Tables"]["user_exercise_defaults"]["Row"];
-
-let nextExerciseRowId = 1;
-
-function createEmptyExerciseRow(): ExerciseDraftRow {
-  return {
-    rowId: `exercise-row-${nextExerciseRowId++}`,
-    exerciseId: "",
-    baseWeightKg: "",
-    targetSets: "",
-    targetReps: "",
-    targetWeightKg: "",
-    notes: "",
-  };
-}
 
 export default function NewSessionPage() {
   const router = useRouter();
@@ -80,15 +46,20 @@ export default function NewSessionPage() {
   const [exerciseDefaultsById, setExerciseDefaultsById] = useState<
     Map<string, ExerciseDefaultsRow>
   >(new Map());
-  const [expandedExerciseNotes, setExpandedExerciseNotes] = useState<Set<number>>(new Set());
-  const [collapsedExercises, setCollapsedExercises] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [createMode, setCreateMode] = useState<"home" | "log">("home");
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"error" | "success">("error");
-  const [isSmallPhone, setIsSmallPhone] = useState(false);
-  const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
   const [hiddenExerciseIds, setHiddenExerciseIds] = useState<Set<string>>(new Set());
+  const [templateOptions, setTemplateOptions] = useState<
+    Array<{ id: string; name: string; exerciseCount: number }>
+  >([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templatePickMessage, setTemplatePickMessage] = useState<string | null>(null);
+  const [pendingTemplate, setPendingTemplate] = useState<WorkoutTemplateWithExercises | null>(
+    null,
+  );
+  const [isSmallPhone, setIsSmallPhone] = useState(false);
   const maxNotesLength = 500;
 
   const trimmedNotes = useMemo(() => notes.trim(), [notes]);
@@ -111,8 +82,32 @@ export default function NewSessionPage() {
     setNotes("");
     setIsSessionNotesExpanded(false);
     setExerciseRows([createEmptyExerciseRow()]);
-    setExpandedExerciseNotes(new Set());
-    setCollapsedExercises(new Set());
+    setSelectedTemplateId("");
+    setTemplatePickMessage(null);
+    setPendingTemplate(null);
+  }
+
+  function hasMeaningfulExerciseDraft(rows: ExerciseDraftRow[]): boolean {
+    return rows.some((row) => row.exerciseId.trim().length > 0);
+  }
+
+  function applyTemplateToDraft(
+    template: WorkoutTemplateWithExercises,
+    mode: "replace" | "append",
+  ) {
+    const incoming = exerciseDraftRowsFromTemplateLines(template.exercises);
+    if (mode === "replace") {
+      setExerciseRows(incoming.length > 0 ? incoming : [createEmptyExerciseRow()]);
+    } else {
+      setExerciseRows((prev) => {
+        const base = hasMeaningfulExerciseDraft(prev) ? prev : [];
+        const trimmed = base.filter((row) => row.exerciseId.trim().length > 0);
+        return [...trimmed, ...incoming];
+      });
+    }
+    setTemplatePickMessage(null);
+    setPendingTemplate(null);
+    setSelectedTemplateId(template.id);
   }
 
   useEffect(() => {
@@ -198,9 +193,31 @@ export default function NewSessionPage() {
         hiddenSet.add(row.exercise_id);
       }
 
+      const { data: templateRows, error: templatesError } = await supabaseBrowserClient
+        .from("workout_templates")
+        .select("id, name, workout_template_exercises(id)")
+        .order("name", { ascending: true });
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (templatesError) {
+        showError("Could not load templates.");
+        setIsChecking(false);
+        return;
+      }
+
+      const templateOpts = (templateRows ?? []).map((row) => ({
+        id: row.id,
+        name: row.name,
+        exerciseCount: row.workout_template_exercises?.length ?? 0,
+      }));
+
       setExerciseOptions(options);
       setExerciseDefaultsById(defaultsMap);
       setHiddenExerciseIds(hiddenSet);
+      setTemplateOptions(templateOpts);
       setIsChecking(false);
     }
 
@@ -238,12 +255,6 @@ export default function NewSessionPage() {
     mediaQuery.addEventListener("change", onChange);
     return () => mediaQuery.removeEventListener("change", onChange);
   }, []);
-
-  useEffect(() => {
-    if (activeExerciseIndex >= exerciseRows.length) {
-      setActiveExerciseIndex(Math.max(0, exerciseRows.length - 1));
-    }
-  }, [activeExerciseIndex, exerciseRows.length]);
 
   async function handleCreateSession(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -291,7 +302,7 @@ export default function NewSessionPage() {
       .single();
 
     if (error || !sessionInsert) {
-      showError(`Could not create workout session: ${error.message}`);
+      showError(`Could not create workout session: ${error?.message ?? "Unknown error"}`);
       setIsSaving(false);
       return;
     }
@@ -335,97 +346,6 @@ export default function NewSessionPage() {
     router.replace(createMode === "log" ? `/sessions/${sessionInsert.id}` : "/");
   }
 
-  function addExerciseRow() {
-    setExerciseRows((prev) => [
-      ...prev,
-      createEmptyExerciseRow(),
-    ]);
-  }
-
-  function removeExerciseRow(index: number) {
-    const removedRowId = exerciseRows[index]?.rowId ?? null;
-    setExerciseRows((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
-    setExpandedExerciseNotes((prev) => {
-      const next = new Set<number>();
-      for (const currentIndex of prev) {
-        if (currentIndex === index) {
-          continue;
-        }
-        next.add(currentIndex > index ? currentIndex - 1 : currentIndex);
-      }
-      return next;
-    });
-    if (removedRowId) {
-      setCollapsedExercises((prev) => {
-        const next = new Set(prev);
-        next.delete(removedRowId);
-        return next;
-      });
-    }
-  }
-
-  function updateExerciseRow(
-    index: number,
-    key:
-      | "exerciseId"
-      | "baseWeightKg"
-      | "targetSets"
-      | "targetReps"
-      | "targetWeightKg"
-      | "notes",
-    value: string,
-  ) {
-    setExerciseRows((prev) =>
-      prev.map((row, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...row,
-              [key]: value,
-            }
-          : row,
-      ),
-    );
-  }
-
-  function handleExerciseSelect(index: number, selectedExerciseId: string) {
-    setExerciseRows((prev) =>
-      prev.map((row, currentIndex) => {
-        if (currentIndex !== index) {
-          return row;
-        }
-
-        const defaults = exerciseDefaultsById.get(selectedExerciseId);
-        if (!defaults) {
-          return {
-            ...row,
-            exerciseId: selectedExerciseId,
-          };
-        }
-
-        return {
-          ...row,
-          exerciseId: selectedExerciseId,
-          baseWeightKg:
-            row.baseWeightKg || defaults.default_base_weight_kg == null
-              ? row.baseWeightKg
-              : String(defaults.default_base_weight_kg),
-          targetSets:
-            row.targetSets || defaults.default_target_sets == null
-              ? row.targetSets
-              : String(defaults.default_target_sets),
-          targetReps:
-            row.targetReps || defaults.default_target_reps == null
-              ? row.targetReps
-              : String(defaults.default_target_reps),
-          targetWeightKg:
-            row.targetWeightKg || defaults.default_target_weight_kg == null
-              ? row.targetWeightKg
-              : String(defaults.default_target_weight_kg),
-        };
-      }),
-    );
-  }
-
   function clearDraft() {
     if (userId) {
       window.localStorage.removeItem(getDraftStorageKey(userId));
@@ -434,60 +354,69 @@ export default function NewSessionPage() {
     resetDraftState();
   }
 
-  function toggleExerciseNotes(index: number) {
-    setExpandedExerciseNotes((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  }
+  async function handleTemplateSelectionChange(templateId: string) {
+    setSelectedTemplateId(templateId);
+    setTemplatePickMessage(null);
+    setPendingTemplate(null);
+    if (!templateId) {
+      return;
+    }
 
-  function toggleExerciseCollapsed(rowId: string) {
-    setCollapsedExercises((prev) => {
-      const next = new Set(prev);
-      if (next.has(rowId)) {
-        next.delete(rowId);
-      } else {
-        next.add(rowId);
-      }
-      return next;
-    });
-  }
+    const { data, error } = await supabaseBrowserClient
+      .from("workout_templates")
+      .select(
+        `
+        id,
+        user_id,
+        name,
+        notes,
+        created_at,
+        updated_at,
+        workout_template_exercises (
+          id,
+          template_id,
+          exercise_id,
+          position,
+          target_sets,
+          target_reps,
+          target_weight_kg,
+          base_weight_kg,
+          notes,
+          created_at
+        )
+      `,
+      )
+      .eq("id", templateId)
+      .single();
 
-  function collapseExercise(rowId: string) {
-    setCollapsedExercises((prev) => {
-      const next = new Set(prev);
-      next.add(rowId);
-      return next;
-    });
-  }
+    if (error || !data) {
+      showError("Could not load that template.");
+      setSelectedTemplateId("");
+      return;
+    }
 
-  function focusExercisePicker(index: number) {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        const rowRoot = document.querySelector(`[data-exercise-row-id="row-${index}"]`);
-        if (!(rowRoot instanceof HTMLElement)) {
-          return;
-        }
-        const nextFocusable = rowRoot.querySelector<HTMLElement>(
-          'input, button[role="combobox"], [role="combobox"], button, [tabindex]:not([tabindex="-1"])',
-        );
-        nextFocusable?.focus();
-      });
-    });
-  }
+    const exercises = [...(data.workout_template_exercises ?? [])].sort(
+      (a, b) => a.position - b.position,
+    );
+    const full: WorkoutTemplateWithExercises = {
+      id: data.id,
+      user_id: data.user_id,
+      name: data.name,
+      notes: data.notes,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      exercises,
+    };
 
-  function scrollCompactCreateIntoView() {
-    window.requestAnimationFrame(() => {
-      document.getElementById("new-session-compact-create")?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
-    });
+    if (hasMeaningfulExerciseDraft(exerciseRows)) {
+      setPendingTemplate(full);
+      setTemplatePickMessage(
+        "Your draft already has exercises. Replace them with this template, or append the template exercises after them.",
+      );
+      return;
+    }
+
+    applyTemplateToDraft(full, "replace");
   }
 
   function goBack() {
@@ -508,11 +437,6 @@ export default function NewSessionPage() {
   }
 
   const isCompactView = isSmallPhone;
-  const visibleExerciseRows = isCompactView
-    ? exerciseRows
-        .map((row, index) => ({ row, index }))
-        .filter(({ index }) => index === activeExerciseIndex)
-    : exerciseRows.map((row, index) => ({ row, index }));
 
   return (
     <PageShell className={isCompactView ? "pb-36" : undefined}>
@@ -528,6 +452,87 @@ export default function NewSessionPage() {
       </div>
       <section className="text-sm">
         <form id="new-session-form" onSubmit={handleCreateSession} className="space-y-4">
+          <label className="block text-sm font-medium">
+            <span className="text-zinc-800">Start from template (optional)</span>
+            <select
+              value={selectedTemplateId}
+              onChange={(event) => void handleTemplateSelectionChange(event.target.value)}
+              className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
+            >
+              <option value="">None — build from scratch</option>
+              {templateOptions.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                  {template.exerciseCount > 0 ? ` (${template.exerciseCount} exercises)` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          {templateOptions.length === 0 ? (
+            <p className="text-xs text-zinc-600">
+              No templates yet.{" "}
+              <Link
+                href="/templates/new"
+                className="font-medium text-sky-800 underline-offset-2 hover:underline"
+              >
+                Create a template
+              </Link>
+              {" · "}
+              <Link
+                href="/templates"
+                className="font-medium text-sky-800 underline-offset-2 hover:underline"
+              >
+                Manage templates
+              </Link>
+            </p>
+          ) : (
+            <p className="text-xs text-zinc-600">
+              <Link
+                href="/templates"
+                className="font-medium text-sky-800 underline-offset-2 hover:underline"
+              >
+                Manage templates
+              </Link>
+            </p>
+          )}
+          {pendingTemplate ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-950">
+              <p className="font-medium">Apply template &quot;{pendingTemplate.name}&quot;</p>
+              {templatePickMessage ? (
+                <p className="mt-1 text-xs text-amber-900/90">{templatePickMessage}</p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <ActionButton
+                  type="button"
+                  size="sm"
+                  variant="primary"
+                  onClick={() => applyTemplateToDraft(pendingTemplate, "replace")}
+                >
+                  Replace exercises
+                </ActionButton>
+                <ActionButton
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => applyTemplateToDraft(pendingTemplate, "append")}
+                >
+                  Append exercises
+                </ActionButton>
+                <ActionButton
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setPendingTemplate(null);
+                    setTemplatePickMessage(null);
+                    setSelectedTemplateId("");
+                  }}
+                >
+                  Cancel
+                </ActionButton>
+              </div>
+            </div>
+          ) : null}
           <label className="block text-sm font-medium">
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="h-3.5 w-3.5 text-zinc-500" />
@@ -570,533 +575,15 @@ export default function NewSessionPage() {
             <StatusNotice message={message} tone={messageTone} onDismiss={clearMessage} />
           ) : null}
 
-          {isCompactView ? (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={clearDraft}
-                className="inline-flex h-12 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs leading-tight text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-              >
-                <Eraser className="h-3.5 w-3.5 text-amber-600" />
-                Clear draft
-              </button>
-              <button
-                type="button"
-                onClick={addExerciseRow}
-                className="inline-flex h-12 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-2 text-xs leading-tight text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-              >
-                <Plus className="h-3.5 w-3.5 text-sky-700" />
-                Add exercise
-              </button>
-            </div>
-          ) : null}
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="inline-flex items-center gap-1 text-sm font-medium">
-                <Dumbbell className="h-3.5 w-3.5 text-zinc-500" />
-                Exercises
-              </h2>
-              {isCompactView && exerciseRows.length > 0 ? (
-                <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">
-                  Exercise {activeExerciseIndex + 1} of {exerciseRows.length}
-                </span>
-              ) : null}
-              <div className={`flex items-center gap-2 ${isCompactView ? "hidden" : ""}`}>
-                  <ActionButton
-                    type="button"
-                    onClick={clearDraft}
-                    variant="secondary"
-                    size="sm"
-                    className="px-2 py-1 text-xs font-normal"
-                    iconColor="amber"
-                  >
-                    <Eraser className="h-3 w-3 text-amber-600" />
-                    Clear draft
-                  </ActionButton>
-                  <ActionButton
-                    type="button"
-                    onClick={addExerciseRow}
-                    variant="primary"
-                    size="sm"
-                    className="px-2 py-1 text-xs font-normal"
-                  >
-                    <Plus className="h-3 w-3 text-white" />
-                    Add exercise
-                  </ActionButton>
-              </div>
-            </div>
-            {visibleExerciseRows.map(({ row, index }) => (
-              <div
-                key={row.rowId}
-                data-exercise-row-id={`row-${index}`}
-                onFocusCapture={() => setActiveExerciseIndex(index)}
-                className={
-                  isCompactView
-                    ? "rounded-md border border-zinc-200 bg-zinc-50/70 p-3"
-                    : "panel panel-nested border-zinc-200 bg-zinc-50/80 p-5 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-                }
-              >
-                {/** Optional per-exercise notes are collapsed by default for less visual noise. */}
-                <div className="mb-2 mt-1 flex items-center justify-between">
-                  {isCompactView ? (
-                    <div className="inline-flex min-h-6 items-center leading-none text-base font-bold text-zinc-900">
-                      {(() => {
-                        const selectedOption = row.exerciseId
-                          ? exerciseOptions.find((option) => option.id === row.exerciseId)
-                          : null;
-                        const selectedBadge = selectedOption
-                          ? toExerciseBadge(selectedOption.slug)
-                          : null;
-                        const baseTitle = selectedBadge ?? `Exercise ${index + 1}`;
-                        const targetDetails = [
-                          row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
-                          row.targetSets ? `${row.targetSets} sets` : null,
-                          row.targetWeightKg ? `weight ${row.targetWeightKg} kg` : null,
-                          row.targetReps ? `${row.targetReps} reps` : null,
-                        ]
-                          .filter(Boolean)
-                          .join(", ");
-                        const mobileTitle = targetDetails
-                          ? `${baseTitle} - ${targetDetails}`
-                          : baseTitle;
-                        return <span>{mobileTitle}</span>;
-                      })()}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => toggleExerciseCollapsed(row.rowId)}
-                      className="inline-flex min-h-6 items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-zinc-100 hover:text-zinc-800"
-                      aria-label={
-                        collapsedExercises.has(row.rowId) ? "Expand exercise" : "Collapse exercise"
-                      }
-                      title={
-                        collapsedExercises.has(row.rowId) ? "Expand exercise" : "Collapse exercise"
-                      }
-                    >
-                      <span className="inline-flex h-6 w-6 items-center justify-center">
-                        {collapsedExercises.has(row.rowId) ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronUp className="h-4 w-4" />
-                        )}
-                      </span>
-                      <span className="inline-flex h-6 items-center leading-none text-sm font-semibold text-zinc-800">
-                        {(() => {
-                          const baseTitle = `Exercise #${index + 1}`;
-                          const label = row.exerciseId
-                            ? (exerciseOptions.find((option) => option.id === row.exerciseId)?.label ??
-                              row.exerciseId)
-                            : null;
-                          const details = [
-                            row.baseWeightKg ? `base ${row.baseWeightKg} kg` : null,
-                            row.targetSets ? `${row.targetSets} sets` : null,
-                            row.targetWeightKg ? `weight ${row.targetWeightKg} kg` : null,
-                            row.targetReps ? `${row.targetReps} reps` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(", ");
-
-                          let desktopTitle = baseTitle;
-                          if (label && details) {
-                            desktopTitle = [baseTitle, `${label} (${details})`].join(" - ");
-                          } else if (label) {
-                            desktopTitle = [baseTitle, label].join(" - ");
-                          } else if (details) {
-                            desktopTitle = [baseTitle, details].join(" - ");
-                          }
-
-                          return <span>{desktopTitle}</span>;
-                        })()}
-                      </span>
-                    </button>
-                  )}
-                  <div className="inline-flex min-h-6 items-center gap-2">
-                    {isCompactView ? (
-                      exerciseRows.length > 1 ? (
-                        <button
-                          type="button"
-                          onClick={() => removeExerciseRow(index)}
-                          className="inline-flex h-8 w-24 items-center justify-center rounded-md border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800 hover:border-sky-300 hover:bg-zinc-100"
-                        >
-                          Remove
-                        </button>
-                      ) : null
-                    ) : exerciseRows.length > 1 ? (
-                      <ActionButton
-                        type="button"
-                        onClick={() => removeExerciseRow(index)}
-                        variant="secondary"
-                        size="sm"
-                        className="h-8 w-24 px-2 py-1 text-xs font-normal"
-                        iconColor="zinc"
-                      >
-                        Remove
-                      </ActionButton>
-                    ) : null}
-                  </div>
-                </div>
-                {isCompactView ? (
-                  <>
-                <div className="mt-5 grid grid-cols-12 items-start gap-2">
-                  <label className="col-span-8 block text-xs font-medium">
-                    <span className="inline-flex items-center gap-1">
-                      <ListChecks className="h-3 w-3 text-zinc-500" />
-                      Exercise
-                      <span aria-hidden className="text-sky-700">*</span>
-                    </span>
-                    <ExerciseSearchSelect
-                      required
-                      size="compact"
-                      className="mt-1 w-full"
-                      options={exerciseOptionsForPicker(
-                        exerciseOptions,
-                        hiddenExerciseIds,
-                        row.exerciseId,
-                      )}
-                      value={row.exerciseId}
-                      onChange={(exerciseId) => handleExerciseSelect(index, exerciseId)}
-                    />
-                  </label>
-                  <label className="col-span-4 block text-xs font-medium">
-                    Base weight (kg)
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.25"
-                      value={row.baseWeightKg}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "baseWeightKg", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
-                      placeholder="e.g. 20"
-                    />
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {[20, 15, 10, 0].map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() =>
-                            updateExerciseRow(
-                              index,
-                              "baseWeightKg",
-                              value === 0 ? "" : String(value),
-                            )
-                          }
-                          className="rounded border bg-white px-2 py-0.5 text-[11px]"
-                        >
-                          +{value}
-                        </button>
-                      ))}
-                    </div>
-                  </label>
-                </div>
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center gap-1">
-                    <p className="text-sm font-semibold text-zinc-800">Targets</p>
-                    <InfoPopover
-                      label="How targets work"
-                      panelAlign="left"
-                      className="[&>button]:h-5 [&>button]:w-5 [&>button]:text-zinc-500"
-                    >
-                      <p>
-                        Sets, weight, and reps here are targets for your working sets. Warmup sets are
-                        tracked separately when you log the session.
-                      </p>
-                    </InfoPopover>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                  <label className="col-span-1 block text-xs font-medium">
-                    Sets
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.targetSets}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "targetSets", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
-                      placeholder="e.g. 3"
-                    />
-                  </label>
-                  <label className="col-span-1 block text-xs font-medium">
-                    Weight (kg)
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.25"
-                      value={row.targetWeightKg}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "targetWeightKg", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
-                      placeholder="e.g. 60"
-                    />
-                  </label>
-                  <label className="col-span-1 block text-xs font-medium">
-                    Reps
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.targetReps}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "targetReps", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm"
-                      placeholder="e.g. 8"
-                    />
-                  </label>
-                  </div>
-                </div>
-                <div className="mt-6 block text-sm font-medium">
-                  <button
-                    type="button"
-                    onClick={() => toggleExerciseNotes(index)}
-                    className="inline-flex items-center gap-1 text-left text-sm font-medium hover:text-sky-700"
-                  >
-                    <NotebookPen className="h-3.5 w-3.5 text-zinc-500" />
-                    {expandedExerciseNotes.has(index)
-                      ? "Hide exercise notes"
-                      : "Add exercise notes"}
-                  </button>
-                  {expandedExerciseNotes.has(index) ? (
-                    <NotesTextareaField
-                      value={row.notes}
-                      onChange={(nextValue) => updateExerciseRow(index, "notes", nextValue)}
-                      placeholder="Optional notes for this exercise"
-                      maxLength={maxNotesLength}
-                      heightClassName="h-20"
-                    />
-                  ) : null}
-                </div>
-                <div className="mt-4 flex flex-col gap-1 border-t border-zinc-200 pt-3">
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <ActionButton
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      fullWidth
-                      className="font-normal"
-                      disabled={!row.exerciseId}
-                      onClick={() => {
-                        collapseExercise(row.rowId);
-                        addExerciseRow();
-                        const nextRowIndex = exerciseRows.length;
-                        setActiveExerciseIndex(nextRowIndex);
-                        focusExercisePicker(nextRowIndex);
-                      }}
-                    >
-                      <Plus className="h-3.5 w-3.5 text-white" />
-                      Save & add next
-                    </ActionButton>
-                  </div>
-                  {exerciseRows.length > 1 ? (
-                    <div className="mt-2 flex gap-2 border-t border-zinc-200/70 pt-2">
-                      <ActionButton
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        fullWidth
-                        className="min-w-0 flex-1 font-normal"
-                        disabled={activeExerciseIndex === 0}
-                        onClick={() =>
-                          setActiveExerciseIndex((prev) => Math.max(0, prev - 1))
-                        }
-                      >
-                        Previous exercise
-                      </ActionButton>
-                      {activeExerciseIndex < exerciseRows.length - 1 ? (
-                        <ActionButton
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          fullWidth
-                          className="min-w-0 flex-1 font-normal"
-                          disabled={!row.exerciseId}
-                          onClick={() =>
-                            setActiveExerciseIndex((prev) =>
-                              Math.min(exerciseRows.length - 1, prev + 1),
-                            )
-                          }
-                        >
-                          <ChevronRight className="h-3.5 w-3.5 text-sky-700" />
-                          Next exercise
-                        </ActionButton>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-                  </>
-                ) : collapsedExercises.has(row.rowId) ? null : (
-                  <>
-                <div className="mt-5">
-                  <div className="grid grid-cols-12 items-start gap-2">
-                    <label className="col-span-8 block text-sm font-medium">
-                      <span className="inline-flex items-center gap-1">
-                        <ListChecks className="h-3.5 w-3.5 text-zinc-500" />
-                        Exercise
-                        <span aria-hidden className="text-sky-700">*</span>
-                      </span>
-                      <ExerciseSearchSelect
-                        required
-                        className="mt-1 w-full"
-                        options={exerciseOptionsForPicker(
-                          exerciseOptions,
-                          hiddenExerciseIds,
-                          row.exerciseId,
-                        )}
-                        value={row.exerciseId}
-                        onChange={(exerciseId) => handleExerciseSelect(index, exerciseId)}
-                      />
-                    </label>
-                    <label className="col-span-4 block text-sm font-medium">
-                      Base weight (kg)
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.25"
-                        value={row.baseWeightKg}
-                        onChange={(event) =>
-                          updateExerciseRow(index, "baseWeightKg", event.target.value)
-                        }
-                        className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                        placeholder="e.g. 20"
-                      />
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {[20, 15, 10, 0].map((value) => (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() =>
-                              updateExerciseRow(
-                                index,
-                                "baseWeightKg",
-                                value === 0 ? "" : String(value),
-                              )
-                            }
-                            className="rounded border bg-white px-2 py-0.5 text-xs"
-                          >
-                            +{value}
-                          </button>
-                        ))}
-                      </div>
-                    </label>
-                  </div>
-                </div>
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1">
-                      <p className="text-sm font-semibold text-zinc-800">Targets</p>
-                      <InfoPopover label="How targets work" className="[&>button]:text-zinc-500">
-                        <p>
-                          Sets, weight, and reps here are targets for your working sets. Warmup sets
-                          are tracked separately when you log the session.
-                        </p>
-                      </InfoPopover>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="grid grid-cols-12 items-end gap-2">
-                  <label className="col-span-4 block text-sm font-medium">
-                    Sets
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.targetSets}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "targetSets", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                      placeholder="e.g. 3"
-                    />
-                  </label>
-                  <label className="col-span-4 block text-sm font-medium">
-                    Weight (kg)
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.25"
-                      value={row.targetWeightKg}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "targetWeightKg", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                      placeholder="e.g. 60"
-                    />
-                  </label>
-                  <label className="col-span-4 block text-sm font-medium">
-                    Reps
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.targetReps}
-                      onChange={(event) =>
-                        updateExerciseRow(index, "targetReps", event.target.value)
-                      }
-                      className="mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                      placeholder="e.g. 8"
-                    />
-                  </label>
-                  </div>
-                </div>
-                <div className="mt-5 block text-sm font-medium">
-                  <button
-                    type="button"
-                    onClick={() => toggleExerciseNotes(index)}
-                    className="inline-flex items-center gap-1 text-left text-sm font-medium hover:text-sky-700"
-                  >
-                    <NotebookPen className="h-3.5 w-3.5 text-zinc-500" />
-                    {expandedExerciseNotes.has(index)
-                      ? "Hide exercise notes"
-                      : "Add exercise notes"}
-                  </button>
-                  {expandedExerciseNotes.has(index) ? (
-                    <NotesTextareaField
-                      value={row.notes}
-                      onChange={(nextValue) => updateExerciseRow(index, "notes", nextValue)}
-                      placeholder="Optional notes for this exercise"
-                      maxLength={maxNotesLength}
-                      heightClassName="h-20"
-                    />
-                  ) : null}
-                </div>
-                <div className="mt-5 flex flex-col items-end gap-1 border-t border-zinc-200 pt-4">
-                  <div className="flex w-full flex-col items-stretch justify-end gap-2 sm:w-1/3 sm:flex-row sm:items-center">
-                    <ActionButton
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="font-normal sm:flex-1"
-                      disabled={!row.exerciseId}
-                      onClick={() => collapseExercise(row.rowId)}
-                    >
-                      <Check className="h-3.5 w-3.5 text-sky-700" />
-                      Save exercise
-                    </ActionButton>
-                    <ActionButton
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      className="font-normal sm:flex-1"
-                      disabled={!row.exerciseId}
-                      onClick={() => {
-                        collapseExercise(row.rowId);
-                        addExerciseRow();
-                        focusExercisePicker(exerciseRows.length);
-                      }}
-                    >
-                      <Plus className="h-3.5 w-3.5 text-white" />
-                      Save & add next
-                    </ActionButton>
-                  </div>
-                </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+          <WorkoutExerciseDraftList
+            exerciseRows={exerciseRows}
+            setExerciseRows={setExerciseRows}
+            exerciseOptions={exerciseOptions}
+            hiddenExerciseIds={hiddenExerciseIds}
+            exerciseDefaultsById={exerciseDefaultsById}
+            maxNotesLength={maxNotesLength}
+            onClearDraft={clearDraft}
+          />
 
           <div className={`flex items-center justify-end gap-3 ${isCompactView ? "hidden" : ""}`}>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
