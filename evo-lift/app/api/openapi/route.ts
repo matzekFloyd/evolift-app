@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
     info: {
       title: "Evo Lift API",
       version: "1.0.0",
-      description: "Browser-testable API docs for Supabase-backed endpoints.",
+      description:
+        "Browser-testable API docs for Supabase-backed endpoints.\n\nWorkout templates are not exposed under `/api/*`. They are loaded and updated from authenticated pages via Supabase client queries and Next.js server actions (`server/actions/templates.ts`).",
     },
     servers: [{ url: getBaseUrl(request) }],
     components: {

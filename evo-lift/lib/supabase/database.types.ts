@@ -128,6 +128,7 @@ export type Database = {
           user_id: string;
           performed_on: string;
           notes: string | null;
+          source_template_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -136,6 +137,7 @@ export type Database = {
           user_id: string;
           performed_on?: string;
           notes?: string | null;
+          source_template_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -144,6 +146,7 @@ export type Database = {
           user_id?: string;
           performed_on?: string;
           notes?: string | null;
+          source_template_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -257,9 +260,84 @@ export type Database = {
         };
         Relationships: [];
       };
+      workout_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      workout_template_exercises: {
+        Row: {
+          id: string;
+          template_id: string;
+          exercise_id: string;
+          position: number;
+          target_sets: number | null;
+          target_reps: number | null;
+          target_weight_kg: number | null;
+          base_weight_kg: number | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          exercise_id: string;
+          position: number;
+          target_sets?: number | null;
+          target_reps?: number | null;
+          target_weight_kg?: number | null;
+          base_weight_kg?: number | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string;
+          exercise_id?: string;
+          position?: number;
+          target_sets?: number | null;
+          target_reps?: number | null;
+          target_weight_kg?: number | null;
+          base_weight_kg?: number | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      instantiate_workout_template: {
+        Args: {
+          p_notes?: string | null;
+          p_performed_on: string;
+          p_template_id: string;
+        };
+        Returns: string;
+      };
+    };
     Enums: {
       language_code: LanguageCode;
     };

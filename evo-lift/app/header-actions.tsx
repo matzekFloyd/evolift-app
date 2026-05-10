@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, Dumbbell, House, LogOut, Menu, UserRound, X } from "lucide-react";
+import { BarChart3, Dumbbell, FileStack, House, LogOut, Menu, UserRound, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -139,6 +139,12 @@ export function HeaderActions() {
             icon={Dumbbell}
           />
           <AppHeaderNavLink
+            href="/templates"
+            label="Templates"
+            isActive={pathname.startsWith("/templates")}
+            icon={FileStack}
+          />
+          <AppHeaderNavLink
             href="/insights"
             label="Insights"
             isActive={pathname.startsWith("/insights")}
@@ -228,6 +234,18 @@ export function HeaderActions() {
               >
                 <Dumbbell className="h-4 w-4 shrink-0" aria-hidden />
                 Exercises
+              </Link>
+              <Link
+                href="/templates"
+                onClick={() => closeCompactMenu({ returnFocus: false })}
+                className={`flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm ${
+                  pathname.startsWith("/templates")
+                    ? "bg-sky-50 text-sky-900"
+                    : "text-zinc-800 hover:bg-zinc-50"
+                }`}
+              >
+                <FileStack className="h-4 w-4 shrink-0" aria-hidden />
+                Templates
               </Link>
               <Link
                 href="/insights"
