@@ -14,6 +14,26 @@ export function getTodayYyyyMmDd(): string {
   return `${year}-${month}-${day}`;
 }
 
+export function formatDateToYyyyMmDd(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Same rolling window as the home “Past workouts” filter: local calendar, one year back through today.
+ */
+export function getDefaultRollingYearDateRange(): { from: string; to: string } {
+  const today = new Date();
+  const oneYearAgo = new Date(today);
+  oneYearAgo.setFullYear(today.getFullYear() - 1);
+  return {
+    from: formatDateToYyyyMmDd(oneYearAgo),
+    to: formatDateToYyyyMmDd(today),
+  };
+}
+
 const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
 
 /**

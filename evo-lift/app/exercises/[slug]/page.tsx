@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Dumbbell,
+  FilterX,
   Hash,
   LayoutList,
   LineChart,
@@ -13,7 +14,9 @@ import {
   TrendingUp,
   Weight,
 } from "lucide-react";
+import { ActionButton } from "@/app/components/action-button";
 import { AppTable } from "@/app/components/app-table";
+import { DateInput } from "@/app/components/date-input";
 import { ExerciseSessionVolumeChart } from "@/app/components/exercise-session-volume-chart";
 import { ExerciseWeightProgressChart } from "@/app/components/exercise-weight-progress-chart";
 import { InfoPopover } from "@/app/components/info-popover";
@@ -29,6 +32,10 @@ import { toExerciseBadge } from "@/lib/exercise-badge";
 import { buildExerciseSessionVolumeChartPoints } from "@/lib/exercise-session-volume-chart";
 import { buildExerciseSessionWeightChartPoints } from "@/lib/exercise-session-weight-chart";
 import { createPageLoadPerfTracker } from "@/lib/page-load-perf";
+import {
+  getDefaultRollingYearDateRange,
+  getTodayYyyyMmDd,
+} from "@/lib/session-date";
 
 type ExerciseRow = {
   id: string;
@@ -75,6 +82,65 @@ type HistorySortKey =
   | "totalKg"
   | "isWarmup";
 type HistorySortDirection = "asc" | "desc";
+
+const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
+
+function clampDateToMaxYyyyMmDd(value: string, max: string): string {
+  return value > max ? max : value;
+}
+
+function parseExerciseDetailFiltersFromSearchParams(
+  sp: { get: (name: string) => string | null },
+  defaults: { from: string; to: string },
+  today: string,
+): { from: string; to: string; hideWarmups: boolean } {
+  let from = defaults.from;
+  let to = defaults.to;
+
+  const rawFrom = sp.get("from")?.trim() ?? "";
+  const rawTo = sp.get("to")?.trim() ?? "";
+  if (rawFrom && YYYY_MM_DD.test(rawFrom)) {
+    from = clampDateToMaxYyyyMmDd(rawFrom.slice(0, 10), today);
+  }
+  if (rawTo && YYYY_MM_DD.test(rawTo)) {
+    to = clampDateToMaxYyyyMmDd(rawTo.slice(0, 10), today);
+  }
+
+  const hideFlag = sp.get("hideWarmups")?.trim().toLowerCase() ?? "";
+  let hideWarmups =
+    hideFlag === "1" || hideFlag === "true" || hideFlag === "yes";
+  const legacyKind = sp.get("kind")?.trim().toLowerCase() ?? "";
+  if (legacyKind === "working") {
+    hideWarmups = true;
+  }
+
+  if (from > to) {
+    const swap = from;
+    from = to;
+    to = swap;
+  }
+
+  return { from, to, hideWarmups };
+}
+
+function buildExerciseDetailFilterQueryString(
+  from: string,
+  to: string,
+  hideWarmups: boolean,
+  defaults: { from: string; to: string },
+): string {
+  const p = new URLSearchParams();
+  if (from !== defaults.from) {
+    p.set("from", from);
+  }
+  if (to !== defaults.to) {
+    p.set("to", to);
+  }
+  if (hideWarmups) {
+    p.set("hideWarmups", "1");
+  }
+  return p.toString();
+}
 
 /**
  * Compact history: fixed-ish column widths so dates, loaded (kg), total (kg), and reps line up row to row.
@@ -134,16 +200,6 @@ function sortExerciseHistoryRowsCanonical(rows: ExerciseSetHistoryRow[]): Exerci
   return rows;
 }
 
-function isRowMoreRecent(left: ExerciseSetHistoryRow, right: ExerciseSetHistoryRow): boolean {
-  if (left.performedOn !== right.performedOn) {
-    return left.performedOn > right.performedOn;
-  }
-  if (left.sessionCreatedAt !== right.sessionCreatedAt) {
-    return left.sessionCreatedAt > right.sessionCreatedAt;
-  }
-  return left.setNumber > right.setNumber;
-}
-
 function isRowEarlier(left: ExerciseSetHistoryRow, right: ExerciseSetHistoryRow): boolean {
   if (left.performedOn !== right.performedOn) {
     return left.performedOn < right.performedOn;
@@ -185,8 +241,11 @@ function formatKgValue(value: number | null, fractionDigits: number): string {
 
 export default function ExerciseDetailPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const params = useParams<{ slug: string }>();
   const slug = params?.slug;
+  const defaultDateRange = useMemo(() => getDefaultRollingYearDateRange(), []);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
@@ -196,6 +255,48 @@ export default function ExerciseDetailPage() {
   const [sortKey, setSortKey] = useState<HistorySortKey>("performedOn");
   const [sortDirection, setSortDirection] = useState<HistorySortDirection>("desc");
   const [detailPanelTab, setDetailPanelTab] = useState<ExerciseDetailPanelTab>("data");
+
+  const filterState = useMemo(
+    () =>
+      parseExerciseDetailFiltersFromSearchParams(
+        searchParams,
+        defaultDateRange,
+        getTodayYyyyMmDd(),
+      ),
+    [searchParams, defaultDateRange],
+  );
+
+  const commitExerciseFilters = useCallback(
+    (patch: Partial<{ from: string; to: string; hideWarmups: boolean }>) => {
+      const merged = {
+        from: patch.from ?? filterState.from,
+        to: patch.to ?? filterState.to,
+        hideWarmups: patch.hideWarmups ?? filterState.hideWarmups,
+      };
+      let { from, to } = merged;
+      const { hideWarmups } = merged;
+      if (from > to) {
+        const s = from;
+        from = to;
+        to = s;
+      }
+      const qs = buildExerciseDetailFilterQueryString(
+        from,
+        to,
+        hideWarmups,
+        defaultDateRange,
+      );
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [
+      defaultDateRange,
+      filterState.from,
+      filterState.hideWarmups,
+      filterState.to,
+      pathname,
+      router,
+    ],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -364,22 +465,47 @@ export default function ExerciseDetailPage() {
     return () => mediaQuery.removeEventListener("change", onChange);
   }, []);
 
-  const historyCountText = useMemo(() => {
-    if (historyRows.length === 1) {
-      return "1 set logged";
+  /** “Clear filters” uses the full span of loaded sets for this exercise (not the 1-year landing default). */
+  const fullHistoryClearDateRange = useMemo(() => {
+    const today = getTodayYyyyMmDd();
+    if (historyRows.length === 0) {
+      return { from: today, to: today };
     }
-    return `${historyRows.length} sets logged`;
-  }, [historyRows.length]);
+    let min = historyRows[0].performedOn.slice(0, 10);
+    for (let i = 1; i < historyRows.length; i++) {
+      const d = historyRows[i].performedOn.slice(0, 10);
+      if (d < min) {
+        min = d;
+      }
+    }
+    return { from: min, to: today };
+  }, [historyRows]);
+
+  const isExerciseFiltersFullyCleared =
+    !filterState.hideWarmups &&
+    filterState.from === fullHistoryClearDateRange.from &&
+    filterState.to === fullHistoryClearDateRange.to;
+
+  const filteredHistoryRows = useMemo(() => {
+    const inRange = historyRows.filter((row) => {
+      const d = row.performedOn.slice(0, 10);
+      return d >= filterState.from && d <= filterState.to;
+    });
+    if (filterState.hideWarmups) {
+      return inRange.filter((row) => !row.isWarmup);
+    }
+    return inRange;
+  }, [historyRows, filterState.from, filterState.to, filterState.hideWarmups]);
 
   const workingRows = useMemo(
-    () => historyRows.filter((row) => !row.isWarmup),
-    [historyRows],
+    () => filteredHistoryRows.filter((row) => !row.isWarmup),
+    [filteredHistoryRows],
   );
 
   /** Per workout session: how many rows (sets) for this exercise, warmups included—matches “Logged sets” grain. */
   const sessionSetStats = useMemo(() => {
     const bySession = new Map<string, number>();
-    for (const row of historyRows) {
+    for (const row of filteredHistoryRows) {
       bySession.set(row.sessionId, (bySession.get(row.sessionId) ?? 0) + 1);
     }
     const counts = [...bySession.values()];
@@ -390,7 +516,7 @@ export default function ExerciseDetailPage() {
       avgSetsPerSession: counts.reduce((s, n) => s + n, 0) / counts.length,
       maxSetsInSession: Math.max(...counts),
     };
-  }, [historyRows]);
+  }, [filteredHistoryRows]);
 
   const avgSetsText = useMemo(
     () =>
@@ -406,13 +532,13 @@ export default function ExerciseDetailPage() {
   );
 
   const sessionWeightChartPoints = useMemo(
-    () => buildExerciseSessionWeightChartPoints(historyRows),
-    [historyRows],
+    () => buildExerciseSessionWeightChartPoints(filteredHistoryRows),
+    [filteredHistoryRows],
   );
 
   const sessionVolumeChartPoints = useMemo(
-    () => buildExerciseSessionVolumeChartPoints(historyRows),
-    [historyRows],
+    () => buildExerciseSessionVolumeChartPoints(filteredHistoryRows),
+    [filteredHistoryRows],
   );
 
   const loadStats = useMemo(() => {
@@ -457,8 +583,8 @@ export default function ExerciseDetailPage() {
 
   /** Default date + session + set order (newest first, highest set first); same as Session date ↓ on wide layout. */
   const compactHistoryRows = useMemo(
-    () => sortExerciseHistoryRowsCanonical([...historyRows]),
-    [historyRows],
+    () => sortExerciseHistoryRowsCanonical([...filteredHistoryRows]),
+    [filteredHistoryRows],
   );
 
   const topRepsRowKey = useMemo(() => {
@@ -490,7 +616,7 @@ export default function ExerciseDetailPage() {
   }, [workingRows]);
 
   const sortedTableRows = useMemo(() => {
-    const next = [...historyRows];
+    const next = [...filteredHistoryRows];
     next.sort((left, right) => {
       let leftValue: string | number = "";
       let rightValue: string | number = "";
@@ -517,7 +643,7 @@ export default function ExerciseDetailPage() {
       return 0;
     });
     return next;
-  }, [historyRows, sortDirection, sortKey]);
+  }, [filteredHistoryRows, sortDirection, sortKey]);
 
   function handleSort(nextKey: HistorySortKey) {
     if (sortKey === nextKey) {
@@ -602,6 +728,68 @@ export default function ExerciseDetailPage() {
               hidden={detailPanelTab !== "data"}
               className="flex flex-col gap-4"
             >
+            <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white/70 p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-4">
+              <p className="text-xs text-zinc-600">
+                Showing{" "}
+                <span className="font-medium text-zinc-800">{filteredHistoryRows.length}</span> of{" "}
+                <span className="font-medium text-zinc-800">{historyRows.length}</span> sets
+              </p>
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block min-w-0 text-xs font-medium text-zinc-600">
+                    From
+                    <DateInput
+                      value={filterState.from}
+                      onChange={(event) =>
+                        commitExerciseFilters({ from: event.target.value })
+                      }
+                      max={getTodayYyyyMmDd()}
+                      className="mt-1 min-w-0 w-full max-w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="block min-w-0 text-xs font-medium text-zinc-600">
+                    To
+                    <DateInput
+                      value={filterState.to}
+                      onChange={(event) => commitExerciseFilters({ to: event.target.value })}
+                      max={getTodayYyyyMmDd()}
+                      className="mt-1 min-w-0 w-full max-w-full rounded-md border bg-white px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                </div>
+                <div className="flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                  <label className="flex min-h-10 min-w-0 cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
+                    <input
+                      type="checkbox"
+                      checked={filterState.hideWarmups}
+                      onChange={(event) =>
+                        commitExerciseFilters({ hideWarmups: event.target.checked })
+                      }
+                      className="h-4 w-4 shrink-0 rounded border-zinc-300 text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                    />
+                    Hide warmups
+                  </label>
+                  <ActionButton
+                    type="button"
+                    onClick={() =>
+                      commitExerciseFilters({
+                        from: fullHistoryClearDateRange.from,
+                        to: fullHistoryClearDateRange.to,
+                        hideWarmups: false,
+                      })
+                    }
+                    disabled={isExerciseFiltersFullyCleared}
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0 text-sm font-normal text-amber-800 hover:text-amber-900"
+                    iconColor="amber"
+                  >
+                    <FilterX className="h-3.5 w-3.5" />
+                    Clear filters
+                  </ActionButton>
+                </div>
+              </div>
+            </div>
             {/*
               Narrow: 3–2–2 rows (6-col grid). Mid: neutral row + load/total row (12-col). Wide: one row (7-col).
             */}
@@ -619,11 +807,11 @@ export default function ExerciseDetailPage() {
               <div className="grid w-full grid-cols-6 gap-2 @min-[28rem]:grid-cols-12 @min-[56rem]:grid-cols-7">
                 <KpiBadge
                   label="Logged sets"
-                  value={String(historyRows.length)}
+                  value={String(filteredHistoryRows.length)}
                   icon={<Hash className="h-4 w-4 text-zinc-600" />}
                   tone="neutral"
                   className="col-span-2 min-w-0 @min-[28rem]:col-span-4 @min-[56rem]:col-span-1"
-                  description="All sets for this exercise, warmups included."
+                  description="Sets in the current date range. Warmups are included unless “Hide warmups” is on."
                 />
                 <KpiBadge
                   label="Avg sets"
@@ -631,7 +819,7 @@ export default function ExerciseDetailPage() {
                   icon={<Hash className="h-4 w-4 text-zinc-600" />}
                   tone="neutral"
                   className="col-span-2 min-w-0 @min-[28rem]:col-span-4 @min-[56rem]:col-span-1"
-                  description="Average sets per workout session for this exercise, warmups included."
+                  description="Average sets per session within the current filters (respects date range and “Hide warmups”)."
                 />
                 <KpiBadge
                   label="Max sets"
@@ -639,7 +827,7 @@ export default function ExerciseDetailPage() {
                   icon={<Hash className="h-4 w-4 text-zinc-600" />}
                   tone="neutral"
                   className="col-span-2 min-w-0 @min-[28rem]:col-span-4 @min-[56rem]:col-span-1"
-                  description="Most sets logged in one workout session for this exercise, warmups included."
+                  description="Most sets in one session within the current filters (respects date range and “Hide warmups”)."
                 />
                 <KpiBadge
                   label="Avg loaded (kg)"
@@ -689,7 +877,28 @@ export default function ExerciseDetailPage() {
               Each row is one set for this exercise. Open a workout session to edit or review
               details.
             </p>
-            {isCompactView ? (
+            {filteredHistoryRows.length === 0 ? (
+              <div className="rounded-md border border-zinc-200 bg-zinc-50/90 p-4 text-sm text-zinc-700">
+                <p className="text-zinc-800">No sets match the current filters.</p>
+                <ActionButton
+                  type="button"
+                  className="mt-3 text-sm font-normal text-amber-800 hover:text-amber-900"
+                  variant="secondary"
+                  size="sm"
+                  iconColor="amber"
+                  onClick={() =>
+                    commitExerciseFilters({
+                      from: fullHistoryClearDateRange.from,
+                      to: fullHistoryClearDateRange.to,
+                      hideWarmups: false,
+                    })
+                  }
+                >
+                  <FilterX className="h-3.5 w-3.5" />
+                  Clear filters
+                </ActionButton>
+              </div>
+            ) : isCompactView ? (
               <div className="@container overflow-x-auto rounded-md border border-zinc-200 bg-white">
                 <div
                   className={`${COMPACT_HISTORY_GRID} border-b bg-zinc-50 px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500`}
