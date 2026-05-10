@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ActionButton } from "@/app/components/action-button";
 import { DateInput } from "@/app/components/date-input";
 import { PageShell } from "@/app/components/page-shell";
+import { NewSessionDraftCallout } from "@/app/components/new-session-draft-callout";
 import { SessionsTable, type SessionsTableRow } from "@/app/components/sessions-table";
 import { WorkoutActivityChart } from "@/app/components/workout-activity-chart";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -87,6 +88,7 @@ export default function Home() {
     Map<string, SessionExerciseBadge[]>
   >(new Map());
   const [setCountBySessionId, setSetCountBySessionId] = useState<Map<string, number>>(new Map());
+  const [userId, setUserId] = useState<string | null>(null);
   const reloadHomeSessionsRef = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -105,6 +107,8 @@ export default function Home() {
         router.replace("/login");
         return;
       }
+
+      setUserId(session.user.id);
 
       const { data, error } = await supabaseBrowserClient
         .from("workout_sessions")
@@ -372,6 +376,7 @@ export default function Home() {
           <span className="hidden sm:inline">Add workout session</span>
         </Link>
       </div>
+      {userId ? <NewSessionDraftCallout userId={userId} /> : null}
       <section className="panel p-5">
         {sessionsError ? (
           <p className="text-sm text-red-600">{sessionsError}</p>

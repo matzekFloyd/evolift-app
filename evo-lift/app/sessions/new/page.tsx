@@ -2,8 +2,8 @@
 
 import { ArrowLeft, CalendarDays, CalendarPlus, Check, NotebookPen, Play } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { ActionButton } from "@/app/components/action-button";
 import { DateInput } from "@/app/components/date-input";
@@ -12,27 +12,34 @@ import { StatusNotice } from "@/app/components/status-notice";
 import { WorkoutExerciseDraftList } from "@/app/components/workout-exercise-draft-list";
 import type { Database } from "@/lib/supabase/database.types";
 import {
+  buildNewSessionDraftPayload,
+  getNewSessionDraftStorageKey,
+  isMeaningfulNewSessionDraft,
+  notifyNewSessionDraftChanged,
+  normalizeExerciseRowsForHydrate,
+  parseNewSessionDraftFromStorage,
+  formatRelativePastFromIso,
+  type NewSessionDraftStored,
+} from "@/lib/new-session-draft";
+import {
   createEmptyExerciseRow,
   exerciseDraftRowsFromTemplateLines,
   type ExerciseDraftRow,
 } from "@/lib/workout-exercise-draft";
-import { getTodayYyyyMmDd } from "@/lib/session-date";
+import { coalesceNewSessionDraftPerformedOn, getTodayYyyyMmDd } from "@/lib/session-date";
 import type { WorkoutTemplateWithExercises } from "@/server/db/templates";
-
-const NEW_SESSION_DRAFT_KEY = "evolift:new-session-draft";
-
-type NewSessionDraft = {
-  performedOn: string;
-  notes: string;
-  exerciseRows: ExerciseDraftRow[];
-};
 
 type ExerciseDefaultsRow = Database["public"]["Tables"]["user_exercise_defaults"]["Row"];
 
-export default function NewSessionPage() {
+function NewSessionPageContent() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const resumeFromQuery = searchParams.get("resume") === "1";
   const [isChecking, setIsChecking] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [draftGate, setDraftGate] = useState<"pending-check" | "blocked" | "open">("pending-check");
+  const [blockedDraft, setBlockedDraft] = useState<NewSessionDraftStored | null>(null);
   /** Start empty for SSR/client match; local "today" is applied in useLayoutEffect before paint. */
   const [performedOn, setPerformedOn] = useState("");
   const [notes, setNotes] = useState("");
@@ -63,10 +70,6 @@ export default function NewSessionPage() {
   const maxNotesLength = 500;
 
   const trimmedNotes = useMemo(() => notes.trim(), [notes]);
-
-  function getDraftStorageKey(currentUserId: string): string {
-    return `${NEW_SESSION_DRAFT_KEY}:${currentUserId}`;
-  }
 
   function showError(messageText: string) {
     setMessageTone("error");
@@ -229,23 +232,67 @@ export default function NewSessionPage() {
   }, [router]);
 
   useLayoutEffect(() => {
+    // Local calendar today before paint; initial state stays "" for SSR/hydration match.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: avoid server date in first client paint
     setPerformedOn((current) => (current ? current : getTodayYyyyMmDd()));
   }, []);
 
-  /** Draft restore from localStorage is deferred to a follow-up (resume / discard UI). Autosave still runs below. */
+  const hydrateFromDraft = useCallback((draft: NewSessionDraftStored) => {
+    setPerformedOn(coalesceNewSessionDraftPerformedOn(draft.performedOn));
+    setNotes(draft.notes);
+    setIsSessionNotesExpanded(draft.notes.trim().length > 0);
+    setExerciseRows(normalizeExerciseRowsForHydrate(draft.exerciseRows));
+    setSelectedTemplateId("");
+    setPendingTemplate(null);
+    setTemplatePickMessage(null);
+  }, []);
+
   useEffect(() => {
-    if (!userId || isChecking || !performedOn) {
+    if (!userId || isChecking || draftGate !== "pending-check") {
       return;
     }
 
-    const draft: NewSessionDraft = {
-      performedOn,
-      notes,
-      exerciseRows,
-    };
+    const raw = window.localStorage.getItem(getNewSessionDraftStorageKey(userId));
+    const parsed = parseNewSessionDraftFromStorage(raw);
+    const todayYyyyMmDd = getTodayYyyyMmDd();
 
-    window.localStorage.setItem(getDraftStorageKey(userId), JSON.stringify(draft));
-  }, [exerciseRows, isChecking, notes, performedOn, userId]);
+    /* eslint-disable react-hooks/set-state-in-effect -- one-shot sync from localStorage after auth */
+    if (!parsed || !isMeaningfulNewSessionDraft(parsed, { todayYyyyMmDd })) {
+      setDraftGate("open");
+      if (resumeFromQuery) {
+        router.replace(pathname, { scroll: false });
+      }
+      return;
+    }
+
+    if (resumeFromQuery) {
+      hydrateFromDraft(parsed);
+      setDraftGate("open");
+      router.replace(pathname, { scroll: false });
+      return;
+    }
+
+    setBlockedDraft(parsed);
+    setDraftGate("blocked");
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [
+    draftGate,
+    hydrateFromDraft,
+    isChecking,
+    pathname,
+    resumeFromQuery,
+    router,
+    userId,
+  ]);
+
+  useEffect(() => {
+    if (!userId || isChecking || !performedOn || draftGate !== "open") {
+      return;
+    }
+
+    const draft = buildNewSessionDraftPayload(performedOn, notes, exerciseRows);
+    window.localStorage.setItem(getNewSessionDraftStorageKey(userId), JSON.stringify(draft));
+  }, [draftGate, exerciseRows, isChecking, notes, performedOn, userId]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
@@ -342,15 +389,19 @@ export default function NewSessionPage() {
       return;
     }
 
-    window.localStorage.removeItem(getDraftStorageKey(userId));
+    window.localStorage.removeItem(getNewSessionDraftStorageKey(userId));
+    notifyNewSessionDraftChanged();
     router.replace(createMode === "log" ? `/sessions/${sessionInsert.id}` : "/");
   }
 
   function clearDraft() {
     if (userId) {
-      window.localStorage.removeItem(getDraftStorageKey(userId));
+      window.localStorage.removeItem(getNewSessionDraftStorageKey(userId));
+      notifyNewSessionDraftChanged();
     }
     setMessage(null);
+    setBlockedDraft(null);
+    setDraftGate("open");
     resetDraftState();
   }
 
@@ -428,7 +479,7 @@ export default function NewSessionPage() {
     router.push("/");
   }
 
-  if (isChecking) {
+  if (isChecking || (userId != null && draftGate === "pending-check")) {
     return (
       <PageShell className="items-center justify-center">
         <p className="text-sm text-zinc-600">Checking session...</p>
@@ -450,7 +501,61 @@ export default function NewSessionPage() {
           Back
         </ActionButton>
       </div>
-      <section className="text-sm">
+      {draftGate === "blocked" && blockedDraft ? (
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+          role="status"
+        >
+          <p className="font-medium text-amber-950">
+            {(() => {
+              const rel = blockedDraft.updatedAt
+                ? formatRelativePastFromIso(blockedDraft.updatedAt)
+                : "";
+              return rel
+                ? `You have an unsaved new session draft from ${rel}.`
+                : "You have an unsaved new session draft.";
+            })()}
+          </p>
+          <p className="mt-1 text-xs text-amber-900/90">
+            Performed on after resume:{" "}
+            {coalesceNewSessionDraftPerformedOn(blockedDraft.performedOn)}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <ActionButton
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                hydrateFromDraft(blockedDraft);
+                setBlockedDraft(null);
+                setDraftGate("open");
+              }}
+            >
+              Resume
+            </ActionButton>
+            <ActionButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (userId) {
+                  window.localStorage.removeItem(getNewSessionDraftStorageKey(userId));
+                  notifyNewSessionDraftChanged();
+                }
+                setBlockedDraft(null);
+                setDraftGate("open");
+                resetDraftState();
+              }}
+            >
+              Discard draft
+            </ActionButton>
+          </div>
+        </div>
+      ) : null}
+      <section
+        className={`text-sm ${draftGate === "blocked" ? "pointer-events-none opacity-50" : ""}`}
+        aria-hidden={draftGate === "blocked"}
+      >
         <form id="new-session-form" onSubmit={handleCreateSession} className="space-y-4">
           <label className="block text-sm font-medium">
             <span className="text-zinc-800">Start from template (optional)</span>
@@ -618,14 +723,16 @@ export default function NewSessionPage() {
       {isCompactView ? (
         <div
           id="new-session-compact-create"
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 p-3 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] backdrop-blur md:hidden"
+          className={`fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 p-3 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] backdrop-blur md:hidden ${
+            draftGate === "blocked" ? "pointer-events-none opacity-50" : ""
+          }`}
         >
           <div className="mx-auto flex w-full max-w-5xl items-center gap-2">
             <button
               type="submit"
               form="new-session-form"
               onClick={() => setCreateMode("home")}
-              disabled={isSaving}
+              disabled={isSaving || draftGate === "blocked"}
               className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm font-medium text-zinc-800 hover:border-sky-300 hover:bg-zinc-100 disabled:opacity-60"
             >
               <Check className="h-3.5 w-3.5 text-sky-700" />
@@ -635,7 +742,7 @@ export default function NewSessionPage() {
               type="submit"
               form="new-session-form"
               onClick={() => setCreateMode("log")}
-              disabled={isSaving}
+              disabled={isSaving || draftGate === "blocked"}
               className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-sky-700 bg-sky-700 px-3 text-sm font-medium text-white hover:border-sky-600 hover:bg-sky-600 disabled:opacity-60"
             >
               <Play className="h-3.5 w-3.5 text-white" />
@@ -645,5 +752,19 @@ export default function NewSessionPage() {
         </div>
       ) : null}
     </PageShell>
+  );
+}
+
+export default function NewSessionPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageShell className="items-center justify-center">
+          <p className="text-sm text-zinc-600">Loading...</p>
+        </PageShell>
+      }
+    >
+      <NewSessionPageContent />
+    </Suspense>
   );
 }
